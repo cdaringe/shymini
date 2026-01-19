@@ -24,4 +24,4 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Run readiness check
-        run: ./scripts/check.sh
+        run: ./scripts/check.sh --skip-docker

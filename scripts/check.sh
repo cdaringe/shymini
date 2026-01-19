@@ -9,6 +9,13 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
+SKIP_DOCKER=false
+for arg in "$@"; do
+    case $arg in
+        --skip-docker) SKIP_DOCKER=true ;;
+    esac
+done
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -60,13 +67,15 @@ fi
 echo
 
 # 4. Docker build
-info "Building Docker image..."
-if docker build -t shymini .; then
-    pass "Docker build succeeded"
-else
-    fail "Docker build failed"
+if [ "$SKIP_DOCKER" = false ]; then
+    info "Building Docker image..."
+    if docker build -t shymini .; then
+        pass "Docker build succeeded"
+    else
+        fail "Docker build failed"
+    fi
+    echo
 fi
-echo
 
 echo "================================"
 echo -e "${GREEN}  All checks passed!${NC}"

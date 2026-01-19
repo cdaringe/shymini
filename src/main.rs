@@ -105,10 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/service/:id/delete", get(dashboard::service_delete_form))
         .route("/service/:id/delete", post(dashboard::service_delete))
         // Ingress routes (using non-obvious paths to avoid ad blockers)
-        .route(
-            "/trace/px_:tracking_id.gif",
-            get(ingress::pixel_handler),
-        )
+        .route("/trace/px_:tracking_id.gif", get(ingress::pixel_handler))
         .route(
             "/trace/px_:tracking_id/:identifier.gif",
             get(ingress::pixel_with_id_handler),

@@ -122,10 +122,11 @@ pub async fn dashboard_index(State(state): State<AppState>) -> Response {
     let mut services_with_stats = Vec::new();
     for service in services {
         // Get basic daily stats
-        let (session_count, hit_count) = match get_basic_counts(&state, service.id, day_ago, now).await {
-            Ok(counts) => counts,
-            Err(_) => (0, 0),
-        };
+        let (session_count, hit_count) =
+            match get_basic_counts(&state, service.id, day_ago, now).await {
+                Ok(counts) => counts,
+                Err(_) => (0, 0),
+            };
 
         services_with_stats.push(ServiceWithStats {
             service,
@@ -188,7 +189,7 @@ async fn get_basic_counts(
         .await?;
 
         let hit_count: i32 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM hits WHERE service_id = ? AND start_time >= ? AND start_time < ?"
+            "SELECT COUNT(*) FROM hits WHERE service_id = ? AND start_time >= ? AND start_time < ?",
         )
         .bind(service_id.0.to_string())
         .bind(start.to_rfc3339())
@@ -249,7 +250,17 @@ pub async fn service_detail(
         }
     };
 
-    let sessions = match db::list_sessions(&state.pool, service_id, start, end, url_pattern.as_ref(), 10, 0).await {
+    let sessions = match db::list_sessions(
+        &state.pool,
+        service_id,
+        start,
+        end,
+        url_pattern.as_ref(),
+        10,
+        0,
+    )
+    .await
+    {
         Ok(s) => s,
         Err(e) => {
             error!("Error fetching sessions: {}", e);
@@ -308,8 +319,16 @@ pub async fn session_list(
     let page = query.page.unwrap_or(1).max(1);
     let offset = (page - 1) * PAGE_SIZE;
 
-    let sessions = match db::list_sessions(&state.pool, service_id, start, end, url_pattern.as_ref(), PAGE_SIZE + 1, offset)
-        .await
+    let sessions = match db::list_sessions(
+        &state.pool,
+        service_id,
+        start,
+        end,
+        url_pattern.as_ref(),
+        PAGE_SIZE + 1,
+        offset,
+    )
+    .await
     {
         Ok(s) => s,
         Err(e) => {
@@ -500,7 +519,11 @@ pub async fn service_create(
         Ok(service) => Redirect::to(&format!("/service/{}", service.id)).into_response(),
         Err(e) => {
             error!("Error creating service: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create service").into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to create service",
+            )
+                .into_response()
         }
     }
 }
@@ -569,7 +592,11 @@ pub async fn service_update(
         }
         Err(e) => {
             error!("Error updating service: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to update service").into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to update service",
+            )
+                .into_response()
         }
     }
 }
@@ -623,7 +650,11 @@ pub async fn service_delete(
         }
         Err(e) => {
             error!("Error deleting service: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete service").into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to delete service",
+            )
+                .into_response()
         }
     }
 }

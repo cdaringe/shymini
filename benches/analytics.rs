@@ -38,7 +38,8 @@ async fn get_top_service(pool: &Pool<Sqlite>) -> String {
 
 fn bench_session_count(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    let db_path = std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
+    let db_path =
+        std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
     let pool = rt.block_on(create_pool(&db_path));
     let service_id = rt.block_on(get_top_service(&pool));
 
@@ -83,7 +84,8 @@ fn bench_session_count(c: &mut Criterion) {
 
 fn bench_hit_count(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    let db_path = std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
+    let db_path =
+        std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
     let pool = rt.block_on(create_pool(&db_path));
     let service_id = rt.block_on(get_top_service(&pool));
 
@@ -108,7 +110,8 @@ fn bench_hit_count(c: &mut Criterion) {
 
 fn bench_top_locations(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    let db_path = std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
+    let db_path =
+        std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
     let pool = rt.block_on(create_pool(&db_path));
     let service_id = rt.block_on(get_top_service(&pool));
 
@@ -133,7 +136,8 @@ fn bench_top_locations(c: &mut Criterion) {
 
 fn bench_browser_breakdown(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    let db_path = std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
+    let db_path =
+        std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
     let pool = rt.block_on(create_pool(&db_path));
     let service_id = rt.block_on(get_top_service(&pool));
 
@@ -158,7 +162,8 @@ fn bench_browser_breakdown(c: &mut Criterion) {
 
 fn bench_daily_chart(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    let db_path = std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
+    let db_path =
+        std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
     let pool = rt.block_on(create_pool(&db_path));
     let service_id = rt.block_on(get_top_service(&pool));
 
@@ -177,7 +182,7 @@ fn bench_daily_chart(c: &mut Criterion) {
                 WHERE service_id = ? AND start_time >= ? AND start_time < ?
                 GROUP BY day
                 ORDER BY day
-                "#
+                "#,
             )
             .bind(&service_id)
             .bind(thirty_days_ago.to_rfc3339())
@@ -192,7 +197,8 @@ fn bench_daily_chart(c: &mut Criterion) {
 
 fn bench_sessions_list(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    let db_path = std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
+    let db_path =
+        std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
     let pool = rt.block_on(create_pool(&db_path));
     let service_id = rt.block_on(get_top_service(&pool));
 
@@ -229,7 +235,8 @@ fn bench_sessions_list(c: &mut Criterion) {
 
 fn bench_full_dashboard_stats(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
-    let db_path = std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
+    let db_path =
+        std::env::var("SHYMINI_BENCH_DB").unwrap_or_else(|_| "sqlite:bench.db".to_string());
     let pool = rt.block_on(create_pool(&db_path));
     let service_id = rt.block_on(get_top_service(&pool));
 

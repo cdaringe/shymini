@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::domain::{
     ChartData, CoreStats, CountedItem, CreateHit, CreateService, CreateSession, DeviceType, Hit,
-    HitId, Service, ServiceId, ServiceStatus, Session, SessionId, TrackingId, TrackerType,
+    HitId, Service, ServiceId, ServiceStatus, Session, SessionId, TrackerType, TrackingId,
     UpdateService,
 };
 use crate::error::{Error, Result};
@@ -22,10 +22,7 @@ pub type PoolOptions = sqlx::sqlite::SqlitePoolOptions;
 const RESULTS_LIMIT: i64 = 300;
 
 pub async fn create_pool(url: &str) -> Result<Pool> {
-    let pool = PoolOptions::new()
-        .max_connections(10)
-        .connect(url)
-        .await?;
+    let pool = PoolOptions::new().max_connections(10).connect(url).await?;
     Ok(pool)
 }
 
@@ -55,7 +52,7 @@ pub async fn run_migrations(pool: &Pool) -> Result<()> {
 
         // Check if tracking_id column already exists
         let columns: Vec<(String,)> = sqlx::query_as(
-            "SELECT name FROM pragma_table_info('services') WHERE name = 'tracking_id'"
+            "SELECT name FROM pragma_table_info('services') WHERE name = 'tracking_id'",
         )
         .fetch_all(pool)
         .await?;
@@ -75,7 +72,7 @@ pub async fn get_service(pool: &Pool, id: ServiceId) -> Result<Service> {
     let row: ServiceRow = sqlx::query_as(
         r#"SELECT id, tracking_id, name, link, origins, status, respect_dnt, ignore_robots,
            collect_ips, ignored_ips, hide_referrer_regex, script_inject, created_at
-           FROM services WHERE id = $1"#
+           FROM services WHERE id = $1"#,
     )
     .bind(id.0)
     .fetch_optional(pool)
@@ -86,7 +83,7 @@ pub async fn get_service(pool: &Pool, id: ServiceId) -> Result<Service> {
     let row: ServiceRow = sqlx::query_as(
         r#"SELECT id, tracking_id, name, link, origins, status, respect_dnt, ignore_robots,
            collect_ips, ignored_ips, hide_referrer_regex, script_inject, created_at
-           FROM services WHERE id = ?"#
+           FROM services WHERE id = ?"#,
     )
     .bind(id.0.to_string())
     .fetch_optional(pool)
@@ -138,7 +135,7 @@ pub async fn get_service_by_tracking_id(pool: &Pool, tracking_id: &str) -> Resul
     let row: ServiceRow = sqlx::query_as(
         r#"SELECT id, tracking_id, name, link, origins, status, respect_dnt, ignore_robots,
            collect_ips, ignored_ips, hide_referrer_regex, script_inject, created_at
-           FROM services WHERE tracking_id = $1"#
+           FROM services WHERE tracking_id = $1"#,
     )
     .bind(tracking_id)
     .fetch_optional(pool)
@@ -149,7 +146,7 @@ pub async fn get_service_by_tracking_id(pool: &Pool, tracking_id: &str) -> Resul
     let row: ServiceRow = sqlx::query_as(
         r#"SELECT id, tracking_id, name, link, origins, status, respect_dnt, ignore_robots,
            collect_ips, ignored_ips, hide_referrer_regex, script_inject, created_at
-           FROM services WHERE tracking_id = ?"#
+           FROM services WHERE tracking_id = ?"#,
     )
     .bind(tracking_id)
     .fetch_optional(pool)
@@ -172,7 +169,7 @@ pub async fn list_services(pool: &Pool) -> Result<Vec<Service>> {
     let rows: Vec<ServiceRow> = sqlx::query_as(
         r#"SELECT id, tracking_id, name, link, origins, status, respect_dnt, ignore_robots,
            collect_ips, ignored_ips, hide_referrer_regex, script_inject, created_at
-           FROM services ORDER BY name, id"#
+           FROM services ORDER BY name, id"#,
     )
     .fetch_all(pool)
     .await?;
@@ -181,7 +178,7 @@ pub async fn list_services(pool: &Pool) -> Result<Vec<Service>> {
     let rows: Vec<ServiceRow> = sqlx::query_as(
         r#"SELECT id, tracking_id, name, link, origins, status, respect_dnt, ignore_robots,
            collect_ips, ignored_ips, hide_referrer_regex, script_inject, created_at
-           FROM services ORDER BY name, id"#
+           FROM services ORDER BY name, id"#,
     )
     .fetch_all(pool)
     .await?;
@@ -219,7 +216,7 @@ pub async fn create_service(pool: &Pool, input: CreateService) -> Result<Service
     sqlx::query(
         r#"INSERT INTO services (id, tracking_id, name, link, origins, respect_dnt, ignore_robots,
            collect_ips, ignored_ips, hide_referrer_regex, script_inject, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"#
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"#,
     )
     .bind(id.0)
     .bind(&tracking_id.0)
@@ -240,7 +237,7 @@ pub async fn create_service(pool: &Pool, input: CreateService) -> Result<Service
     sqlx::query(
         r#"INSERT INTO services (id, tracking_id, name, link, origins, respect_dnt, ignore_robots,
            collect_ips, ignored_ips, hide_referrer_regex, script_inject, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
     )
     .bind(id.0.to_string())
     .bind(&tracking_id.0)
@@ -271,7 +268,9 @@ pub async fn update_service(pool: &Pool, id: ServiceId, input: UpdateService) ->
     let ignore_robots = input.ignore_robots.unwrap_or(service.ignore_robots);
     let collect_ips = input.collect_ips.unwrap_or(service.collect_ips);
     let ignored_ips = input.ignored_ips.unwrap_or(service.ignored_ips);
-    let hide_referrer_regex = input.hide_referrer_regex.unwrap_or(service.hide_referrer_regex);
+    let hide_referrer_regex = input
+        .hide_referrer_regex
+        .unwrap_or(service.hide_referrer_regex);
     let script_inject = input.script_inject.unwrap_or(service.script_inject);
 
     #[cfg(feature = "postgres")]
@@ -279,7 +278,7 @@ pub async fn update_service(pool: &Pool, id: ServiceId, input: UpdateService) ->
         r#"UPDATE services SET name = $1, link = $2, origins = $3, status = $4,
            respect_dnt = $5, ignore_robots = $6, collect_ips = $7, ignored_ips = $8,
            hide_referrer_regex = $9, script_inject = $10
-           WHERE id = $11"#
+           WHERE id = $11"#,
     )
     .bind(&name)
     .bind(&link)
@@ -300,7 +299,7 @@ pub async fn update_service(pool: &Pool, id: ServiceId, input: UpdateService) ->
         r#"UPDATE services SET name = ?, link = ?, origins = ?, status = ?,
            respect_dnt = ?, ignore_robots = ?, collect_ips = ?, ignored_ips = ?,
            hide_referrer_regex = ?, script_inject = ?
-           WHERE id = ?"#
+           WHERE id = ?"#,
     )
     .bind(&name)
     .bind(&link)
@@ -342,7 +341,7 @@ pub async fn get_session(pool: &Pool, id: SessionId) -> Result<Session> {
         r#"SELECT id, service_id, identifier, start_time, last_seen, user_agent,
            browser, device, device_type, os, ip::TEXT, asn, country, longitude,
            latitude, time_zone, is_bounce
-           FROM sessions WHERE id = $1"#
+           FROM sessions WHERE id = $1"#,
     )
     .bind(id.0)
     .fetch_optional(pool)
@@ -354,7 +353,7 @@ pub async fn get_session(pool: &Pool, id: SessionId) -> Result<Session> {
         r#"SELECT id, service_id, identifier, start_time, last_seen, user_agent,
            browser, device, device_type, os, ip, asn, country, longitude,
            latitude, time_zone, is_bounce
-           FROM sessions WHERE id = ?"#
+           FROM sessions WHERE id = ?"#,
     )
     .bind(id.0.to_string())
     .fetch_optional(pool)
@@ -402,7 +401,7 @@ pub async fn create_session(pool: &Pool, input: CreateSession) -> Result<Session
         r#"INSERT INTO sessions (id, service_id, identifier, start_time, last_seen,
            user_agent, browser, device, device_type, os, ip, asn, country,
            longitude, latitude, time_zone, is_bounce)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
     )
     .bind(id.0.to_string())
     .bind(input.service_id.0.to_string())
@@ -512,7 +511,8 @@ pub async fn list_sessions(
 ) -> Result<Vec<Session>> {
     // If URL pattern is provided, we need to filter sessions that have matching hits
     if let Some(pattern) = url_pattern {
-        return list_sessions_with_url_filter(pool, service_id, start, end, pattern, limit, offset).await;
+        return list_sessions_with_url_filter(pool, service_id, start, end, pattern, limit, offset)
+            .await;
     }
 
     #[cfg(feature = "postgres")]
@@ -523,7 +523,7 @@ pub async fn list_sessions(
            FROM sessions
            WHERE service_id = $1 AND start_time >= $2 AND start_time < $3
            ORDER BY start_time DESC
-           LIMIT $4 OFFSET $5"#
+           LIMIT $4 OFFSET $5"#,
     )
     .bind(service_id.0)
     .bind(start)
@@ -541,7 +541,7 @@ pub async fn list_sessions(
            FROM sessions
            WHERE service_id = ? AND start_time >= ? AND start_time < ?
            ORDER BY start_time DESC
-           LIMIT ? OFFSET ?"#
+           LIMIT ? OFFSET ?"#,
     )
     .bind(service_id.0.to_string())
     .bind(start.to_rfc3339())
@@ -567,7 +567,7 @@ async fn list_sessions_with_url_filter(
     #[cfg(feature = "postgres")]
     let session_ids: Vec<(uuid::Uuid,)> = sqlx::query_as(
         r#"SELECT DISTINCT session_id FROM hits
-           WHERE service_id = $1 AND start_time >= $2 AND start_time < $3"#
+           WHERE service_id = $1 AND start_time >= $2 AND start_time < $3"#,
     )
     .bind(service_id.0)
     .bind(start)
@@ -578,7 +578,7 @@ async fn list_sessions_with_url_filter(
     #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
     let session_ids: Vec<(String,)> = sqlx::query_as(
         r#"SELECT DISTINCT session_id FROM hits
-           WHERE service_id = ? AND start_time >= ? AND start_time < ?"#
+           WHERE service_id = ? AND start_time >= ? AND start_time < ?"#,
     )
     .bind(service_id.0.to_string())
     .bind(start.to_rfc3339())
@@ -590,20 +590,17 @@ async fn list_sessions_with_url_filter(
     let mut matching_session_ids = Vec::new();
     for (session_id,) in session_ids {
         #[cfg(feature = "postgres")]
-        let hits: Vec<(String,)> = sqlx::query_as(
-            "SELECT location FROM hits WHERE session_id = $1"
-        )
-        .bind(session_id)
-        .fetch_all(pool)
-        .await?;
+        let hits: Vec<(String,)> =
+            sqlx::query_as("SELECT location FROM hits WHERE session_id = $1")
+                .bind(session_id)
+                .fetch_all(pool)
+                .await?;
 
         #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
-        let hits: Vec<(String,)> = sqlx::query_as(
-            "SELECT location FROM hits WHERE session_id = ?"
-        )
-        .bind(&session_id)
-        .fetch_all(pool)
-        .await?;
+        let hits: Vec<(String,)> = sqlx::query_as("SELECT location FROM hits WHERE session_id = ?")
+            .bind(&session_id)
+            .fetch_all(pool)
+            .await?;
 
         if hits.iter().any(|(loc,)| url_pattern.is_match(loc)) {
             matching_session_ids.push(session_id);
@@ -618,7 +615,11 @@ async fn list_sessions_with_url_filter(
     // We need to do pagination in Rust since we filtered in-memory
     let skip = offset as usize;
     let take = limit as usize;
-    let paginated_ids: Vec<_> = matching_session_ids.into_iter().skip(skip).take(take).collect();
+    let paginated_ids: Vec<_> = matching_session_ids
+        .into_iter()
+        .skip(skip)
+        .take(take)
+        .collect();
 
     if paginated_ids.is_empty() {
         return Ok(Vec::new());
@@ -631,7 +632,7 @@ async fn list_sessions_with_url_filter(
             r#"SELECT id, service_id, identifier, start_time, last_seen, user_agent,
                browser, device, device_type, os, ip::TEXT, asn, country, longitude,
                latitude, time_zone, is_bounce
-               FROM sessions WHERE id = $1"#
+               FROM sessions WHERE id = $1"#,
         )
         .bind(session_id)
         .fetch_optional(pool)
@@ -642,7 +643,7 @@ async fn list_sessions_with_url_filter(
             r#"SELECT id, service_id, identifier, start_time, last_seen, user_agent,
                browser, device, device_type, os, ip, asn, country, longitude,
                latitude, time_zone, is_bounce
-               FROM sessions WHERE id = ?"#
+               FROM sessions WHERE id = ?"#,
         )
         .bind(&session_id)
         .fetch_optional(pool)
@@ -665,7 +666,7 @@ pub async fn get_hit(pool: &Pool, id: HitId) -> Result<Hit> {
     let row: HitRow = sqlx::query_as(
         r#"SELECT id, session_id, service_id, initial, start_time, last_seen,
            heartbeats, tracker, location, referrer, load_time
-           FROM hits WHERE id = $1"#
+           FROM hits WHERE id = $1"#,
     )
     .bind(id.0)
     .fetch_optional(pool)
@@ -676,7 +677,7 @@ pub async fn get_hit(pool: &Pool, id: HitId) -> Result<Hit> {
     let row: HitRow = sqlx::query_as(
         r#"SELECT id, session_id, service_id, initial, start_time, last_seen,
            heartbeats, tracker, location, referrer, load_time
-           FROM hits WHERE id = ?"#
+           FROM hits WHERE id = ?"#,
     )
     .bind(id.0)
     .fetch_optional(pool)
@@ -692,7 +693,7 @@ pub async fn create_hit(pool: &Pool, input: CreateHit) -> Result<Hit> {
         r#"INSERT INTO hits (session_id, service_id, initial, start_time, last_seen,
            heartbeats, tracker, location, referrer, load_time)
            VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, $9)
-           RETURNING id"#
+           RETURNING id"#,
     )
     .bind(input.session_id.0)
     .bind(input.service_id.0)
@@ -711,7 +712,7 @@ pub async fn create_hit(pool: &Pool, input: CreateHit) -> Result<Hit> {
         sqlx::query(
             r#"INSERT INTO hits (session_id, service_id, initial, start_time, last_seen,
                heartbeats, tracker, location, referrer, load_time)
-               VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)"#
+               VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)"#,
         )
         .bind(input.session_id.0.to_string())
         .bind(input.service_id.0.to_string())
@@ -733,11 +734,7 @@ pub async fn create_hit(pool: &Pool, input: CreateHit) -> Result<Hit> {
     get_hit(pool, HitId(id)).await
 }
 
-pub async fn update_hit_heartbeat(
-    pool: &Pool,
-    id: HitId,
-    last_seen: DateTime<Utc>,
-) -> Result<()> {
+pub async fn update_hit_heartbeat(pool: &Pool, id: HitId, last_seen: DateTime<Utc>) -> Result<()> {
     #[cfg(feature = "postgres")]
     sqlx::query("UPDATE hits SET heartbeats = heartbeats + 1, last_seen = $1 WHERE id = $2")
         .bind(last_seen)
@@ -767,7 +764,7 @@ pub async fn list_hits_for_session(
            heartbeats, tracker, location, referrer, load_time
            FROM hits WHERE session_id = $1
            ORDER BY start_time DESC
-           LIMIT $2 OFFSET $3"#
+           LIMIT $2 OFFSET $3"#,
     )
     .bind(session_id.0)
     .bind(limit)
@@ -781,7 +778,7 @@ pub async fn list_hits_for_session(
            heartbeats, tracker, location, referrer, load_time
            FROM hits WHERE session_id = ?
            ORDER BY start_time DESC
-           LIMIT ? OFFSET ?"#
+           LIMIT ? OFFSET ?"#,
     )
     .bind(session_id.0.to_string())
     .bind(limit)
@@ -861,7 +858,7 @@ async fn get_relative_stats(
     // Currently online count
     #[cfg(feature = "postgres")]
     let currently_online: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sessions WHERE service_id = $1 AND last_seen > $2"
+        "SELECT COUNT(*) FROM sessions WHERE service_id = $1 AND last_seen > $2",
     )
     .bind(service_id.0)
     .bind(active_cutoff)
@@ -871,7 +868,7 @@ async fn get_relative_stats(
     #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
     let currently_online: i64 = {
         let count: i32 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM sessions WHERE service_id = ? AND last_seen > ?"
+            "SELECT COUNT(*) FROM sessions WHERE service_id = ? AND last_seen > ?",
         )
         .bind(service_id.0.to_string())
         .bind(active_cutoff.to_rfc3339())
@@ -907,7 +904,7 @@ async fn get_relative_stats(
     // Hit count
     #[cfg(feature = "postgres")]
     let hit_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM hits WHERE service_id = $1 AND start_time >= $2 AND start_time < $3"
+        "SELECT COUNT(*) FROM hits WHERE service_id = $1 AND start_time >= $2 AND start_time < $3",
     )
     .bind(service_id.0)
     .bind(start)
@@ -918,7 +915,7 @@ async fn get_relative_stats(
     #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
     let hit_count: i64 = {
         let count: i32 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM hits WHERE service_id = ? AND start_time >= ? AND start_time < ?"
+            "SELECT COUNT(*) FROM hits WHERE service_id = ? AND start_time >= ? AND start_time < ?",
         )
         .bind(service_id.0.to_string())
         .bind(start.to_rfc3339())
@@ -931,23 +928,21 @@ async fn get_relative_stats(
     // Has any hits ever
     #[cfg(feature = "postgres")]
     let has_hits: bool = {
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM hits WHERE service_id = $1 LIMIT 1"
-        )
-        .bind(service_id.0)
-        .fetch_one(pool)
-        .await?;
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM hits WHERE service_id = $1 LIMIT 1")
+                .bind(service_id.0)
+                .fetch_one(pool)
+                .await?;
         count > 0
     };
 
     #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
     let has_hits: bool = {
-        let count: i32 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM hits WHERE service_id = ? LIMIT 1"
-        )
-        .bind(service_id.0.to_string())
-        .fetch_one(pool)
-        .await?;
+        let count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM hits WHERE service_id = ? LIMIT 1")
+                .bind(service_id.0.to_string())
+                .fetch_one(pool)
+                .await?;
         count > 0
     };
 
@@ -1019,7 +1014,7 @@ async fn get_relative_stats(
     let avg_session_duration: Option<f64> = {
         let raw: Option<f64> = sqlx::query_scalar(
             r#"SELECT AVG(EXTRACT(EPOCH FROM (last_seen - start_time)))
-               FROM sessions WHERE service_id = $1 AND start_time >= $2 AND start_time < $3"#
+               FROM sessions WHERE service_id = $1 AND start_time >= $2 AND start_time < $3"#,
         )
         .bind(service_id.0)
         .bind(start)
@@ -1185,9 +1180,17 @@ async fn get_relative_stats_with_url_filter(
 
     // Get all hits in the date range
     #[cfg(feature = "postgres")]
-    let all_hits: Vec<(i64, uuid::Uuid, String, Option<f64>, bool, String, DateTime<Utc>)> = sqlx::query_as(
+    let all_hits: Vec<(
+        i64,
+        uuid::Uuid,
+        String,
+        Option<f64>,
+        bool,
+        String,
+        DateTime<Utc>,
+    )> = sqlx::query_as(
         r#"SELECT id, session_id, location, load_time, initial, referrer, start_time
-           FROM hits WHERE service_id = $1 AND start_time >= $2 AND start_time < $3"#
+           FROM hits WHERE service_id = $1 AND start_time >= $2 AND start_time < $3"#,
     )
     .bind(service_id.0)
     .bind(start)
@@ -1198,7 +1201,7 @@ async fn get_relative_stats_with_url_filter(
     #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
     let all_hits: Vec<(i64, String, String, Option<f64>, bool, String, String)> = sqlx::query_as(
         r#"SELECT id, session_id, location, load_time, initial, referrer, start_time
-           FROM hits WHERE service_id = ? AND start_time >= ? AND start_time < ?"#
+           FROM hits WHERE service_id = ? AND start_time >= ? AND start_time < ?"#,
     )
     .bind(service_id.0.to_string())
     .bind(start.to_rfc3339())
@@ -1232,23 +1235,21 @@ async fn get_relative_stats_with_url_filter(
     // Has any hits ever (unfiltered)
     #[cfg(feature = "postgres")]
     let has_hits: bool = {
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM hits WHERE service_id = $1 LIMIT 1"
-        )
-        .bind(service_id.0)
-        .fetch_one(pool)
-        .await?;
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM hits WHERE service_id = $1 LIMIT 1")
+                .bind(service_id.0)
+                .fetch_one(pool)
+                .await?;
         count > 0
     };
 
     #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
     let has_hits: bool = {
-        let count: i32 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM hits WHERE service_id = ? LIMIT 1"
-        )
-        .bind(service_id.0.to_string())
-        .fetch_one(pool)
-        .await?;
+        let count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM hits WHERE service_id = ? LIMIT 1")
+                .bind(service_id.0.to_string())
+                .fetch_one(pool)
+                .await?;
         count > 0
     };
 
@@ -1312,24 +1313,52 @@ async fn get_relative_stats_with_url_filter(
 
     for session_id in &matching_session_ids {
         #[cfg(feature = "postgres")]
-        let session: Option<(String, String, String, String, String, bool, DateTime<Utc>, DateTime<Utc>)> = sqlx::query_as(
+        let session: Option<(
+            String,
+            String,
+            String,
+            String,
+            String,
+            bool,
+            DateTime<Utc>,
+            DateTime<Utc>,
+        )> = sqlx::query_as(
             r#"SELECT country, os, browser, device, device_type, is_bounce, start_time, last_seen
-               FROM sessions WHERE id = $1"#
+               FROM sessions WHERE id = $1"#,
         )
         .bind(session_id)
         .fetch_optional(pool)
         .await?;
 
         #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
-        let session: Option<(String, String, String, String, String, bool, String, String)> = sqlx::query_as(
+        let session: Option<(
+            String,
+            String,
+            String,
+            String,
+            String,
+            bool,
+            String,
+            String,
+        )> = sqlx::query_as(
             r#"SELECT country, os, browser, device, device_type, is_bounce, start_time, last_seen
-               FROM sessions WHERE id = ?"#
+               FROM sessions WHERE id = ?"#,
         )
         .bind(session_id)
         .fetch_optional(pool)
         .await?;
 
-        if let Some((country, os, browser, device, device_type, is_bounce, session_start, last_seen)) = session {
+        if let Some((
+            country,
+            os,
+            browser,
+            device,
+            device_type,
+            is_bounce,
+            session_start,
+            last_seen,
+        )) = session
+        {
             *countries.entry(country).or_insert(0) += 1;
             *operating_systems.entry(os).or_insert(0) += 1;
             *browsers.entry(browser).or_insert(0) += 1;
@@ -1354,7 +1383,8 @@ async fn get_relative_stats_with_url_filter(
                     DateTime::parse_from_rfc3339(&session_start),
                     DateTime::parse_from_rfc3339(&last_seen),
                 ) {
-                    let duration = (end_dt.with_timezone(&Utc) - start_dt.with_timezone(&Utc)).num_seconds() as f64;
+                    let duration = (end_dt.with_timezone(&Utc) - start_dt.with_timezone(&Utc))
+                        .num_seconds() as f64;
                     session_durations.push(duration);
                     if end_dt.with_timezone(&Utc) > active_cutoff {
                         currently_online += 1;
@@ -1378,7 +1408,10 @@ async fn get_relative_stats_with_url_filter(
 
     // Convert hashmaps to sorted vectors
     fn to_counted_items(map: HashMap<String, i64>, limit: i64) -> Vec<CountedItem> {
-        let mut items: Vec<_> = map.into_iter().map(|(value, count)| CountedItem { value, count }).collect();
+        let mut items: Vec<_> = map
+            .into_iter()
+            .map(|(value, count)| CountedItem { value, count })
+            .collect();
         items.sort_by(|a, b| b.count.cmp(&a.count));
         items.truncate(limit as usize);
         items
@@ -1553,7 +1586,7 @@ async fn get_hourly_chart_data(
         let rows: Vec<(DateTime<Utc>, i64)> = sqlx::query_as(
             "SELECT date_trunc('hour', start_time) as hour, COUNT(*) as count
              FROM sessions WHERE service_id = $1 AND start_time >= $2 AND start_time < $3
-             GROUP BY hour ORDER BY hour"
+             GROUP BY hour ORDER BY hour",
         )
         .bind(service_id.0)
         .bind(start)
@@ -1570,7 +1603,7 @@ async fn get_hourly_chart_data(
         let rows: Vec<(DateTime<Utc>, i64)> = sqlx::query_as(
             "SELECT date_trunc('hour', start_time) as hour, COUNT(*) as count
              FROM hits WHERE service_id = $1 AND start_time >= $2 AND start_time < $3
-             GROUP BY hour ORDER BY hour"
+             GROUP BY hour ORDER BY hour",
         )
         .bind(service_id.0)
         .bind(start)
@@ -1589,7 +1622,7 @@ async fn get_hourly_chart_data(
         let rows: Vec<(String, i64)> = sqlx::query_as(
             "SELECT strftime('%Y-%m-%d %H:00', start_time) as hour, COUNT(*) as count
              FROM sessions WHERE service_id = ? AND start_time >= ? AND start_time < ?
-             GROUP BY hour ORDER BY hour"
+             GROUP BY hour ORDER BY hour",
         )
         .bind(service_id.0.to_string())
         .bind(start.to_rfc3339())
@@ -1604,7 +1637,7 @@ async fn get_hourly_chart_data(
         let rows: Vec<(String, i64)> = sqlx::query_as(
             "SELECT strftime('%Y-%m-%d %H:00', start_time) as hour, COUNT(*) as count
              FROM hits WHERE service_id = ? AND start_time >= ? AND start_time < ?
-             GROUP BY hour ORDER BY hour"
+             GROUP BY hour ORDER BY hour",
         )
         .bind(service_id.0.to_string())
         .bind(start.to_rfc3339())
@@ -1653,7 +1686,7 @@ async fn get_daily_chart_data(
         let rows: Vec<(chrono::NaiveDate, i64)> = sqlx::query_as(
             "SELECT date_trunc('day', start_time)::date as day, COUNT(*) as count
              FROM sessions WHERE service_id = $1 AND start_time >= $2 AND start_time < $3
-             GROUP BY day ORDER BY day"
+             GROUP BY day ORDER BY day",
         )
         .bind(service_id.0)
         .bind(start)
@@ -1669,7 +1702,7 @@ async fn get_daily_chart_data(
         let rows: Vec<(chrono::NaiveDate, i64)> = sqlx::query_as(
             "SELECT date_trunc('day', start_time)::date as day, COUNT(*) as count
              FROM hits WHERE service_id = $1 AND start_time >= $2 AND start_time < $3
-             GROUP BY day ORDER BY day"
+             GROUP BY day ORDER BY day",
         )
         .bind(service_id.0)
         .bind(start)
@@ -1688,7 +1721,7 @@ async fn get_daily_chart_data(
         let rows: Vec<(String, i64)> = sqlx::query_as(
             "SELECT date(start_time) as day, COUNT(*) as count
              FROM sessions WHERE service_id = ? AND start_time >= ? AND start_time < ?
-             GROUP BY day ORDER BY day"
+             GROUP BY day ORDER BY day",
         )
         .bind(service_id.0.to_string())
         .bind(start.to_rfc3339())
@@ -1703,7 +1736,7 @@ async fn get_daily_chart_data(
         let rows: Vec<(String, i64)> = sqlx::query_as(
             "SELECT date(start_time) as day, COUNT(*) as count
              FROM hits WHERE service_id = ? AND start_time >= ? AND start_time < ?
-             GROUP BY day ORDER BY day"
+             GROUP BY day ORDER BY day",
         )
         .bind(service_id.0.to_string())
         .bind(start.to_rfc3339())

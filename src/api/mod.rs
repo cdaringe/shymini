@@ -238,7 +238,17 @@ pub async fn list_sessions(
     let (start, end) = parse_date_range(&query);
     let url_pattern = parse_url_pattern(&query.url_pattern);
 
-    match db::list_sessions(&state.pool, service_id, start, end, url_pattern.as_ref(), 100, 0).await {
+    match db::list_sessions(
+        &state.pool,
+        service_id,
+        start,
+        end,
+        url_pattern.as_ref(),
+        100,
+        0,
+    )
+    .await
+    {
         Ok(sessions) => Json(ApiResponse::success(sessions)).into_response(),
         Err(e) => {
             error!("Error listing sessions: {}", e);
@@ -441,7 +451,10 @@ mod tests {
         };
         let (start, end) = parse_date_range(&query);
 
-        assert_eq!(start.format("%Y-%m-%dT%H:%M").to_string(), "2024-06-01T09:30");
+        assert_eq!(
+            start.format("%Y-%m-%dT%H:%M").to_string(),
+            "2024-06-01T09:30"
+        );
         assert_eq!(end.format("%Y-%m-%dT%H:%M").to_string(), "2024-06-30T17:45");
     }
 
@@ -455,9 +468,15 @@ mod tests {
         };
         let (start, end) = parse_date_range(&query);
 
-        assert_eq!(start.format("%Y-%m-%dT%H:%M").to_string(), "2024-06-01T14:00");
+        assert_eq!(
+            start.format("%Y-%m-%dT%H:%M").to_string(),
+            "2024-06-01T14:00"
+        );
         // Date-only end should default to 23:59:59
-        assert_eq!(end.format("%Y-%m-%d %H:%M:%S").to_string(), "2024-06-30 23:59:59");
+        assert_eq!(
+            end.format("%Y-%m-%d %H:%M:%S").to_string(),
+            "2024-06-30 23:59:59"
+        );
     }
 
     #[test]
@@ -471,7 +490,10 @@ mod tests {
         let (start, end) = parse_date_range(&query);
 
         // The earlier date should become start, later date should become end
-        assert_eq!(start.format("%Y-%m-%dT%H:%M").to_string(), "2024-01-01T00:00");
+        assert_eq!(
+            start.format("%Y-%m-%dT%H:%M").to_string(),
+            "2024-01-01T00:00"
+        );
         assert_eq!(end.format("%Y-%m-%dT%H:%M").to_string(), "2024-12-31T23:59");
     }
 

@@ -234,30 +234,21 @@ mod tests {
             "x-forwarded-for",
             HeaderValue::from_static("203.0.113.195, 70.41.3.18, 150.172.238.178"),
         );
-        assert_eq!(
-            get_client_ip(&headers),
-            Some("203.0.113.195".to_string())
-        );
+        assert_eq!(get_client_ip(&headers), Some("203.0.113.195".to_string()));
     }
 
     #[test]
     fn test_get_client_ip_x_real_ip() {
         let mut headers = HeaderMap::new();
         headers.insert("x-real-ip", HeaderValue::from_static("192.168.1.100"));
-        assert_eq!(
-            get_client_ip(&headers),
-            Some("192.168.1.100".to_string())
-        );
+        assert_eq!(get_client_ip(&headers), Some("192.168.1.100".to_string()));
     }
 
     #[test]
     fn test_get_client_ip_cf_connecting_ip() {
         let mut headers = HeaderMap::new();
         headers.insert("cf-connecting-ip", HeaderValue::from_static("104.28.1.1"));
-        assert_eq!(
-            get_client_ip(&headers),
-            Some("104.28.1.1".to_string())
-        );
+        assert_eq!(get_client_ip(&headers), Some("104.28.1.1".to_string()));
     }
 
     #[test]
@@ -312,7 +303,10 @@ mod tests {
     fn test_get_origin_from_origin_header() {
         let mut headers = HeaderMap::new();
         headers.insert("origin", HeaderValue::from_static("https://example.com"));
-        assert_eq!(get_origin(&headers), Some("https://example.com".to_string()));
+        assert_eq!(
+            get_origin(&headers),
+            Some("https://example.com".to_string())
+        );
     }
 
     #[test]
@@ -322,7 +316,10 @@ mod tests {
             "referer",
             HeaderValue::from_static("https://example.com/path/to/page"),
         );
-        assert_eq!(get_origin(&headers), Some("https://example.com".to_string()));
+        assert_eq!(
+            get_origin(&headers),
+            Some("https://example.com".to_string())
+        );
     }
 
     #[test]

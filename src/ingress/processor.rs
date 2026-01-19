@@ -10,15 +10,13 @@ use crate::error::Result;
 use crate::state::AppState;
 use crate::ua::parse_user_agent;
 
-#[derive(Debug)]
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct IngressPayload {
     pub idempotency: Option<String>,
     pub location: String,
     pub referrer: String,
     pub load_time: Option<f64>,
 }
-
 
 pub async fn process_ingress(
     state: &AppState,
@@ -54,80 +52,79 @@ pub async fn process_ingress(
     let cache_key = format!("session_{}_{}", service.id, hash);
 
     // Try to find existing session in cache
-    let (session_id, initial) =
-        match state.cache.get_session_association(&cache_key).await {
-            Some(session_id) => {
-                debug!("Found existing session {} in cache", session_id);
-                state.cache.touch_session_association(&cache_key).await;
+    let (session_id, initial) = match state.cache.get_session_association(&cache_key).await {
+        Some(session_id) => {
+            debug!("Found existing session {} in cache", session_id);
+            state.cache.touch_session_association(&cache_key).await;
 
-                // Update session last_seen
-                db::update_session_last_seen(&state.pool, session_id, time).await?;
+            // Update session last_seen
+            db::update_session_last_seen(&state.pool, session_id, time).await?;
 
-                // Update identifier if provided and session doesn't have one
-                if !identifier.is_empty() {
-                    let session = db::get_session(&state.pool, session_id).await?;
-                    if session.identifier.is_empty() {
-                        db::update_session_identifier(&state.pool, session_id, identifier).await?;
-                    }
+            // Update identifier if provided and session doesn't have one
+            if !identifier.is_empty() {
+                let session = db::get_session(&state.pool, session_id).await?;
+                if session.identifier.is_empty() {
+                    db::update_session_identifier(&state.pool, session_id, identifier).await?;
                 }
-
-                (session_id, false)
             }
-            None => {
-                debug!("Creating new session for service {}", service.id);
 
-                // GeoIP lookup
-                let geo_data = state.geo.lookup(ip);
-                debug!("GeoIP data: {:?}", geo_data);
+            (session_id, false)
+        }
+        None => {
+            debug!("Creating new session for service {}", service.id);
 
-                // Parse user agent
-                let ua_data = parse_user_agent(user_agent);
-                debug!("UA data: {:?}", ua_data);
+            // GeoIP lookup
+            let geo_data = state.geo.lookup(ip);
+            debug!("GeoIP data: {:?}", geo_data);
 
-                // Check if we should ignore robots
-                if ua_data.device_type == DeviceType::Robot && service.ignore_robots {
-                    debug!("Ignoring robot");
-                    return Ok(());
-                }
+            // Parse user agent
+            let ua_data = parse_user_agent(user_agent);
+            debug!("UA data: {:?}", ua_data);
 
-                // Determine IP to store
-                let stored_ip = if service.collect_ips && !state.settings.block_all_ips {
-                    Some(ip.to_string())
-                } else {
-                    None
-                };
-
-                // Create session
-                let session = db::create_session(
-                    &state.pool,
-                    CreateSession {
-                        service_id: service.id,
-                        identifier: identifier.trim().to_string(),
-                        start_time: time,
-                        user_agent: user_agent.to_string(),
-                        browser: ua_data.browser,
-                        device: ua_data.device,
-                        device_type: ua_data.device_type,
-                        os: ua_data.os,
-                        ip: stored_ip,
-                        asn: geo_data.asn,
-                        country: geo_data.country,
-                        longitude: geo_data.longitude,
-                        latitude: geo_data.latitude,
-                        time_zone: geo_data.time_zone,
-                    },
-                )
-                .await?;
-
-                // Cache the session association
-                state
-                    .cache
-                    .set_session_association(cache_key, session.id)
-                    .await;
-
-                (session.id, true)
+            // Check if we should ignore robots
+            if ua_data.device_type == DeviceType::Robot && service.ignore_robots {
+                debug!("Ignoring robot");
+                return Ok(());
             }
-        };
+
+            // Determine IP to store
+            let stored_ip = if service.collect_ips && !state.settings.block_all_ips {
+                Some(ip.to_string())
+            } else {
+                None
+            };
+
+            // Create session
+            let session = db::create_session(
+                &state.pool,
+                CreateSession {
+                    service_id: service.id,
+                    identifier: identifier.trim().to_string(),
+                    start_time: time,
+                    user_agent: user_agent.to_string(),
+                    browser: ua_data.browser,
+                    device: ua_data.device,
+                    device_type: ua_data.device_type,
+                    os: ua_data.os,
+                    ip: stored_ip,
+                    asn: geo_data.asn,
+                    country: geo_data.country,
+                    longitude: geo_data.longitude,
+                    latitude: geo_data.latitude,
+                    time_zone: geo_data.time_zone,
+                },
+            )
+            .await?;
+
+            // Cache the session association
+            state
+                .cache
+                .set_session_association(cache_key, session.id)
+                .await;
+
+            (session.id, true)
+        }
+    };
 
     // Handle hit creation/update
     let idempotency_key = payload.idempotency.as_ref().map(|k| format!("hit_{}", k));

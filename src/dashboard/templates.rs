@@ -113,7 +113,10 @@ pub fn floatformat(value: Option<f64>, precision: i32) -> String {
         Some(v) => {
             if precision < 0 {
                 let formatted = format!("{:.prec$}", v, prec = precision.unsigned_abs() as usize);
-                formatted.trim_end_matches('0').trim_end_matches('.').to_string()
+                formatted
+                    .trim_end_matches('0')
+                    .trim_end_matches('.')
+                    .to_string()
             } else {
                 format!("{:.prec$}", v, prec = precision as usize)
             }

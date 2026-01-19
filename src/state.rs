@@ -14,12 +14,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(
-        pool: Pool,
-        cache: AppCache,
-        settings: Settings,
-        geo: GeoIpLookup,
-    ) -> Self {
+    pub fn new(pool: Pool, cache: AppCache, settings: Settings, geo: GeoIpLookup) -> Self {
         Self {
             pool,
             cache,

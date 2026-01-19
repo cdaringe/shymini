@@ -2,8 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::types::{
-    ChartData, CountedItem, DeviceType, HitId, ServiceId, ServiceStatus,
-    SessionId, TrackingId, TrackerType,
+    ChartData, CountedItem, DeviceType, HitId, ServiceId, ServiceStatus, SessionId, TrackerType,
+    TrackingId,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -270,14 +270,12 @@ impl fmt::Display for SessionAssociationHash {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ChartData {
     pub sessions: Vec<i64>,
     pub hits: Vec<i64>,
     pub labels: Vec<String>,
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChartGranularity {
@@ -376,22 +374,32 @@ mod tests {
     fn test_session_hash_different_ip() {
         let hash1 = SessionAssociationHash::compute("192.168.1.1", "Mozilla/5.0", None, false);
         let hash2 = SessionAssociationHash::compute("192.168.1.2", "Mozilla/5.0", None, false);
-        assert_ne!(hash1, hash2, "Different IPs should produce different hashes");
+        assert_ne!(
+            hash1, hash2,
+            "Different IPs should produce different hashes"
+        );
     }
 
     #[test]
     fn test_session_hash_different_ua() {
         let hash1 = SessionAssociationHash::compute("192.168.1.1", "Mozilla/5.0", None, false);
         let hash2 = SessionAssociationHash::compute("192.168.1.1", "Chrome/91.0", None, false);
-        assert_ne!(hash1, hash2, "Different user agents should produce different hashes");
+        assert_ne!(
+            hash1, hash2,
+            "Different user agents should produce different hashes"
+        );
     }
 
     #[test]
     fn test_session_hash_with_service_id() {
         let service_id = ServiceId::new();
-        let hash1 = SessionAssociationHash::compute("192.168.1.1", "Mozilla/5.0", Some(&service_id), true);
+        let hash1 =
+            SessionAssociationHash::compute("192.168.1.1", "Mozilla/5.0", Some(&service_id), true);
         let hash2 = SessionAssociationHash::compute("192.168.1.1", "Mozilla/5.0", None, true);
-        assert_ne!(hash1, hash2, "Service ID should affect hash when aggressive salting enabled");
+        assert_ne!(
+            hash1, hash2,
+            "Service ID should affect hash when aggressive salting enabled"
+        );
     }
 
     #[test]

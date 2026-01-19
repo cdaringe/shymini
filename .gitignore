@@ -4,9 +4,6 @@
 /*.db-shm
 /*.db-wal
 
-# Cargo lock for binaries
-Cargo.lock
-
 # IDE
 .idea/
 .vscode/

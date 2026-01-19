@@ -49,9 +49,6 @@ WORKDIR /app
 # Copy binary only (templates are compiled in, migrations embedded)
 COPY --from=builder /app/target/release/shymini /app/shymini
 
-# Copy static files if they exist
-COPY static /app/static
-
 # Create data directory
 RUN mkdir -p /data && chown shymini:shymini /data
 

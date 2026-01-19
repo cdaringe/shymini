@@ -1166,6 +1166,7 @@ async fn get_relative_stats(
     })
 }
 
+#[allow(clippy::type_complexity)]
 async fn get_relative_stats_with_url_filter(
     pool: &Pool,
     service_id: ServiceId,

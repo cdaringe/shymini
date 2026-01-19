@@ -144,6 +144,7 @@ impl ServiceStatus {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "AC" => Some(Self::Active),
@@ -183,6 +184,7 @@ impl DeviceType {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s.to_uppercase().as_str() {
             "PHONE" => Self::Phone,
@@ -220,6 +222,7 @@ impl TrackerType {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s.to_uppercase().as_str() {
             "JS" => Self::Js,

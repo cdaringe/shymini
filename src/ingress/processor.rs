@@ -18,6 +18,7 @@ pub struct IngressPayload {
     pub load_time: Option<f64>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn process_ingress(
     state: &AppState,
     service: &Service,
@@ -173,6 +174,7 @@ pub async fn process_ingress(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn create_new_hit(
     pool: &Pool,
     session_id: SessionId,

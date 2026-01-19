@@ -122,11 +122,10 @@ pub async fn dashboard_index(State(state): State<AppState>) -> Response {
     let mut services_with_stats = Vec::new();
     for service in services {
         // Get basic daily stats
-        let (session_count, hit_count) =
-            match get_basic_counts(&state, service.id, day_ago, now).await {
-                Ok(counts) => counts,
-                Err(_) => (0, 0),
-            };
+        let (session_count, hit_count): (i64, i64) =
+            get_basic_counts(&state, service.id, day_ago, now)
+                .await
+                .unwrap_or_default();
 
         services_with_stats.push(ServiceWithStats {
             service,

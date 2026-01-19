@@ -1,0 +1,6 @@
+{
+  "tasks": {
+    "fe": "deno run --allow-net --allow-env server.ts",
+    "fe:watch": "deno run --watch --allow-net --allow-env server.ts"
+  }
+}

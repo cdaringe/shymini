@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shymini Tracking Test Page</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f9fafb;
+    }
+    h1 { color: #4f46e5; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    label { display: block; margin-bottom: 5px; font-weight: 500; }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    button:hover { background: #4338ca; }
+    button.secondary {
+      background: #6b7280;
+    }
+    button.secondary:hover { background: #4b5563; }
+    .code {
+      background: #1f2937;
+      color: #10b981;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    .status.success { background: #d1fae5; color: #065f46; }
+    .status.error { background: #fee2e2; color: #991b1b; }
+    .status.info { background: #dbeafe; color: #1e40af; }
+    #log {
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+      background: #f3f4f6;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    #log p { margin: 2px 0; }
+  </style>
+</head>
+<body>
+  <h1>Shymini Tracking Test Page</h1>
+
+  <div class="card">
+    <h2>1. Configure Service</h2>
+    <label for="serviceId">Service UUID:</label>
+    <input type="text" id="serviceId" placeholder="Enter your service UUID from Shymini dashboard">
+    <p style="color: #6b7280; font-size: 13px; margin-top: 5px;">
+      Get this from the tracker code snippet on your service detail page.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>2. Tracker Script</h2>
+    <p>This script will be injected when you click "Load Tracker":</p>
+    <div class="code" id="trackerCode">
+      &lt;script defer src="http://shymini.localhost:3000/boot/{SERVICE_ID}.js"&gt;&lt;/script&gt;
+    </div>
+    <button onclick="loadTracker()">Load Tracker</button>
+    <button class="secondary" onclick="unloadTracker()">Unload Tracker</button>
+    <div id="trackerStatus"></div>
+  </div>
+
+  <div class="card">
+    <h2>3. Simulate Navigation</h2>
+    <p>Test tracking by simulating page views:</p>
+    <button onclick="simulatePageView('/home')">Visit /home</button>
+    <button onclick="simulatePageView('/about')">Visit /about</button>
+    <button onclick="simulatePageView('/products')">Visit /products</button>
+    <button onclick="simulatePageView('/contact')">Visit /contact</button>
+  </div>
+
+  <div class="card">
+    <h2>4. Manual Tracking Test</h2>
+    <button onclick="testPixelTracker()">Test Pixel Tracker</button>
+    <button onclick="testScriptPost()">Test Script POST</button>
+    <div id="manualStatus"></div>
+  </div>
+
+  <div class="card">
+    <h2>Event Log</h2>
+    <div id="log"></div>
+    <button class="secondary" onclick="clearLog()">Clear Log</button>
+  </div>
+
+  <script>
+    let trackerLoaded = false;
+    let trackerScript = null;
+
+    function getServiceId() {
+      return document.getElementById('serviceId').value.trim();
+    }
+
+    function getProxyUrl() {
+      // Use same host as current page
+      return window.location.origin;
+    }
+
+    function updateTrackerCode() {
+      const serviceId = getServiceId() || '{SERVICE_ID}';
+      const proxyUrl = getProxyUrl();
+      document.getElementById('trackerCode').textContent =
+        `<script defer src="${proxyUrl}/boot/${serviceId}.js"><\/script>`;
+    }
+
+    document.getElementById('serviceId').addEventListener('input', updateTrackerCode);
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const p = document.createElement('p');
+      p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      p.style.color = type === 'error' ? '#dc2626' : type === 'success' ? '#059669' : '#374151';
+      logDiv.appendChild(p);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+    }
+
+    function showStatus(elementId, message, type) {
+      const el = document.getElementById(elementId);
+      el.className = `status ${type}`;
+      el.textContent = message;
+    }
+
+    function loadTracker() {
+      const serviceId = getServiceId();
+      if (!serviceId) {
+        showStatus('trackerStatus', 'Please enter a Service UUID first', 'error');
+        return;
+      }
+
+      if (trackerLoaded) {
+        showStatus('trackerStatus', 'Tracker already loaded. Unload first.', 'info');
+        return;
+      }
+
+      const proxyUrl = getProxyUrl();
+      const scriptUrl = `${proxyUrl}/boot/${serviceId}.js`;
+
+      trackerScript = document.createElement('script');
+      trackerScript.src = scriptUrl;
+      trackerScript.defer = true;
+      trackerScript.onload = () => {
+        trackerLoaded = true;
+        showStatus('trackerStatus', 'Tracker loaded successfully!', 'success');
+        log(`Tracker loaded from ${scriptUrl}`, 'success');
+
+        // Check if Shymini object is available
+        setTimeout(() => {
+          if (window.Shymini) {
+            log(`Shymini object available. DNT: ${window.Shymini.dnt}`, 'info');
+          }
+        }, 100);
+      };
+      trackerScript.onerror = () => {
+        showStatus('trackerStatus', 'Failed to load tracker. Check console.', 'error');
+        log(`Failed to load tracker from ${scriptUrl}`, 'error');
+      };
+
+      document.body.appendChild(trackerScript);
+      log(`Loading tracker from ${scriptUrl}...`);
+    }
+
+    function unloadTracker() {
+      if (trackerScript && trackerScript.parentNode) {
+        trackerScript.parentNode.removeChild(trackerScript);
+      }
+      trackerScript = null;
+      trackerLoaded = false;
+
+      // Clear Shymini heartbeat
+      if (window.Shymini && window.Shymini.heartbeatTaskId) {
+        clearInterval(window.Shymini.heartbeatTaskId);
+      }
+      window.Shymini = undefined;
+
+      showStatus('trackerStatus', 'Tracker unloaded', 'info');
+      log('Tracker unloaded');
+    }
+
+    function simulatePageView(path) {
+      if (!window.Shymini) {
+        log('Shymini not loaded. Load tracker first.', 'error');
+        return;
+      }
+
+      // Update URL (for display only, doesn't actually navigate)
+      history.pushState({}, '', path);
+      log(`Simulated navigation to ${path}`);
+
+      // Trigger new page load tracking
+      window.Shymini.newPageLoad();
+      log('Triggered Shymini.newPageLoad()', 'success');
+    }
+
+    async function testPixelTracker() {
+      const serviceId = getServiceId();
+      if (!serviceId) {
+        showStatus('manualStatus', 'Please enter a Service UUID first', 'error');
+        return;
+      }
+
+      const proxyUrl = getProxyUrl();
+      const pixelUrl = `${proxyUrl}/t/${serviceId}/pixel.gif`;
+
+      log(`Testing pixel tracker: ${pixelUrl}`);
+
+      try {
+        const response = await fetch(pixelUrl);
+        if (response.ok) {
+          showStatus('manualStatus', `Pixel tracker OK (${response.status})`, 'success');
+          log(`Pixel response: ${response.status} ${response.headers.get('content-type')}`, 'success');
+        } else {
+          showStatus('manualStatus', `Pixel tracker failed: ${response.status}`, 'error');
+          log(`Pixel error: ${response.status}`, 'error');
+        }
+      } catch (err) {
+        showStatus('manualStatus', `Pixel tracker error: ${err.message}`, 'error');
+        log(`Pixel exception: ${err.message}`, 'error');
+      }
+    }
+
+    async function testScriptPost() {
+      const serviceId = getServiceId();
+      if (!serviceId) {
+        showStatus('manualStatus', 'Please enter a Service UUID first', 'error');
+        return;
+      }
+
+      const proxyUrl = getProxyUrl();
+      const scriptUrl = `${proxyUrl}/boot/${serviceId}.js`;
+
+      const payload = {
+        idempotency: `test-${Date.now()}`,
+        location: window.location.href,
+        referrer: document.referrer || '',
+        loadTime: Math.floor(Math.random() * 500) + 100,
+      };
+
+      log(`Testing script POST: ${scriptUrl}`);
+      log(`Payload: ${JSON.stringify(payload)}`);
+
+      try {
+        const response = await fetch(scriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          showStatus('manualStatus', `Script POST OK: ${JSON.stringify(data)}`, 'success');
+          log(`Script response: ${JSON.stringify(data)}`, 'success');
+        } else {
+          showStatus('manualStatus', `Script POST failed: ${response.status}`, 'error');
+          log(`Script error: ${response.status}`, 'error');
+        }
+      } catch (err) {
+        showStatus('manualStatus', `Script POST error: ${err.message}`, 'error');
+        log(`Script exception: ${err.message}`, 'error');
+      }
+    }
+
+    // Initialize
+    updateTrackerCode();
+    log('Test page loaded. Enter your Service UUID to begin.');
+  </script>
+</body>
+</html>

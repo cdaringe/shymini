@@ -1,0 +1,9 @@
+{
+  "tasks": {
+    "proxy": "deno run --allow-net --allow-env --allow-read server.ts",
+    "proxy:verbose": "VERBOSE=true deno run --allow-net --allow-env --allow-read server.ts"
+  },
+  "compilerOptions": {
+    "strict": true
+  }
+}

@@ -1,3 +1,11 @@
+## [1.0.1](https://github.com/cdaringe/shymini/compare/v1.0.0...v1.0.1) (2026-01-19)
+
+
+### Bug Fixes
+
+* docker publish ([b077160](https://github.com/cdaringe/shymini/commit/b077160f22682ea48e715d9259f52536ef067861))
+* docker publish ([66bc4e8](https://github.com/cdaringe/shymini/commit/66bc4e836733471e156b2faf21b7a4960ea6198b))
+
 # 1.0.0 (2026-01-19)
 
 

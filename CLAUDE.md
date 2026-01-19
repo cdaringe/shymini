@@ -49,6 +49,9 @@ cargo build --release --no-default-features --features postgres
 
 # Run tests
 cargo test
+
+# Run full readiness check (format, test, clippy, docker build)
+./scripts/check.sh
 ```
 
 ## Project Structure

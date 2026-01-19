@@ -71,16 +71,13 @@ All configuration is done via environment variables with the `SHYMINI__` prefix:
 
 ### Adding Tracking to Your Website
 
-Add the following script to your website (use the tracking ID shown in your service dashboard):
+Open the GUI, e.g. https://your-shymini-instance, and select "Add Service" to create a new tracking service for your website.
+It will specify a script OR pixel tracker to add to your site. For example:
 
 ```html
-<script defer src="https://your-shymini-instance/trace/app_TRACKING_ID.js"></script>
-```
-
-Or use the pixel tracker for no-JavaScript environments:
-
-```html
-<img src="https://your-shymini-instance/trace/px_TRACKING_ID.gif" style="display:none">
+<script defer src="https://your-shymini-instance/app_TRACKING_ID.js"></script>
+<!-- or -->
+<img src="https://your-shymini-instance/px_TRACKING_ID.gif" style="display:none">
 ```
 
 The `TRACKING_ID` is a short 8-character code (e.g., `abc12345`) shown in your service settings.

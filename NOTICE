@@ -1,0 +1,13 @@
+shymini
+Copyright 2026 cdaringe
+
+This project is a Rust rewrite of Shynet, originally created by R. Miles McCain
+and other contributors.
+
+Original Shynet project:
+  https://github.com/milesmcc/shynet
+  Copyright 2019-2024 R. Miles McCain and Shynet contributors
+  Licensed under the Apache License, Version 2.0
+
+This derivative work incorporates design concepts, architecture patterns, and
+functionality inspired by the original Shynet project.

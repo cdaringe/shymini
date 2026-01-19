@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Create Service - Shymini{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Create New Service</h1>
+        <p class="text-gray-600">Set up a new website for analytics tracking</p>
+    </div>
+
+    <form method="POST" action="/service/new" class="bg-white rounded-lg shadow p-6">
+        <div class="space-y-6">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                    Service Name *
+                </label>
+                <input type="text" id="name" name="name" required
+                       class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="My Website">
+            </div>
+
+            <div>
+                <label for="link" class="block text-sm font-medium text-gray-700 mb-1">
+                    Website URL
+                </label>
+                <input type="url" id="link" name="link"
+                       class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="https://example.com">
+            </div>
+
+            <div>
+                <label for="origins" class="block text-sm font-medium text-gray-700 mb-1">
+                    Allowed Origins
+                </label>
+                <input type="text" id="origins" name="origins" value="*"
+                       class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="* or https://example.com,https://www.example.com">
+                <p class="mt-1 text-xs text-gray-500">Comma-separated list of allowed origins for CORS, or * for all</p>
+            </div>
+
+            <div class="border-t pt-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Privacy Settings</h3>
+
+                <div class="space-y-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="respect_dnt" name="respect_dnt" checked
+                               class="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                        <label for="respect_dnt" class="ml-2 text-sm text-gray-700">
+                            Respect Do Not Track (DNT) header
+                        </label>
+                    </div>
+
+                    <div class="flex items-center">
+                        <input type="checkbox" id="ignore_robots" name="ignore_robots"
+                               class="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                        <label for="ignore_robots" class="ml-2 text-sm text-gray-700">
+                            Ignore bots and crawlers
+                        </label>
+                    </div>
+
+                    <div class="flex items-center">
+                        <input type="checkbox" id="collect_ips" name="collect_ips" checked
+                               class="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                        <label for="collect_ips" class="ml-2 text-sm text-gray-700">
+                            Collect IP addresses
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label for="ignored_ips" class="block text-sm font-medium text-gray-700 mb-1">
+                    Ignored IP Addresses
+                </label>
+                <input type="text" id="ignored_ips" name="ignored_ips"
+                       class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="192.168.1.0/24, 10.0.0.0/8">
+                <p class="mt-1 text-xs text-gray-500">Comma-separated list of IP addresses or CIDR ranges to ignore</p>
+            </div>
+
+            <div>
+                <label for="hide_referrer_regex" class="block text-sm font-medium text-gray-700 mb-1">
+                    Hide Referrers Matching (Regex)
+                </label>
+                <input type="text" id="hide_referrer_regex" name="hide_referrer_regex"
+                       class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       placeholder="^https://internal\..*">
+                <p class="mt-1 text-xs text-gray-500">Regular expression to hide referrers from stats</p>
+            </div>
+
+            <div>
+                <label for="script_inject" class="block text-sm font-medium text-gray-700 mb-1">
+                    Custom JavaScript Inject
+                </label>
+                <textarea id="script_inject" name="script_inject" rows="3"
+                          class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                          placeholder="// Custom JS to inject with tracker script"></textarea>
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-end space-x-4">
+            <a href="/" class="px-4 py-2 text-gray-700 hover:text-gray-900">Cancel</a>
+            <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">
+                Create Service
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

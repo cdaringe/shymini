@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Sessions - {{ service.name }} - Shymini{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <a href="/service/{{ service.id }}" class="text-indigo-600 hover:underline text-sm">← Back to {{ service.name }}</a>
+        <h1 class="text-2xl font-bold text-gray-900 mt-2">Sessions</h1>
+    </div>
+    <div class="flex items-center space-x-2">
+        <input type="text" id="urlPattern" name="urlPattern" value="{{ url_pattern }}"
+               placeholder="URL regex filter"
+               class="border rounded px-3 py-2 text-sm w-40">
+        <input type="datetime-local" id="startDate" name="startDate" value="{{ start_date }}"
+               class="border rounded px-3 py-2 text-sm"
+               onchange="validateDateRange()">
+        <span class="text-gray-500">to</span>
+        <input type="datetime-local" id="endDate" name="endDate" value="{{ end_date }}"
+               class="border rounded px-3 py-2 text-sm"
+               onchange="validateDateRange()">
+        <span id="dateError" class="text-red-500 text-xs hidden">Invalid range</span>
+        <button onclick="updateDateRange()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+            Filter
+        </button>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow">
+    <div class="p-4">
+        {% if sessions.is_empty() %}
+        <p class="text-gray-500 text-center py-4">No sessions found</p>
+        {% else %}
+        <table class="w-full">
+            <thead class="text-xs text-gray-500 uppercase border-b">
+                <tr>
+                    <th class="text-left py-2">Session</th>
+                    <th class="text-left py-2">Browser</th>
+                    <th class="text-left py-2">OS</th>
+                    <th class="text-left py-2">Country</th>
+                    <th class="text-left py-2">Device</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm">
+                {% for session in sessions %}
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="py-2">
+                        <a href="/service/{{ service.id }}/sessions/{{ session.id }}" class="text-indigo-600 hover:underline">
+                            {% if session.identifier.is_empty() %}{{ session.id }}{% else %}{{ session.identifier }}{% endif %}
+                        </a>
+                    </td>
+                    <td class="py-2 text-gray-600">{% if session.browser.is_empty() %}Unknown{% else %}{{ session.browser }}{% endif %}</td>
+                    <td class="py-2 text-gray-600">{% if session.os.is_empty() %}Unknown{% else %}{{ session.os }}{% endif %}</td>
+                    <td class="py-2 text-gray-600">{% if session.country.is_empty() %}Unknown{% else %}{{ session.country }}{% endif %}</td>
+                    <td class="py-2 text-gray-600">{{ session.device_type }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+
+    <div class="p-4 border-t flex justify-between items-center">
+        <div class="text-sm text-gray-500">
+            Page {{ page }}
+        </div>
+        <div class="flex space-x-2">
+            {% if page > 1 %}
+            <a href="/service/{{ service.id }}/sessions?page={{ page - 1 }}&startDate={{ start_date }}&endDate={{ end_date }}&urlPattern={{ url_pattern }}"
+               class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+                Previous
+            </a>
+            {% endif %}
+            {% if has_next %}
+            <a href="/service/{{ service.id }}/sessions?page={{ page + 1 }}&startDate={{ start_date }}&endDate={{ end_date }}&urlPattern={{ url_pattern }}"
+               class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+                Next
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function validateDateRange() {
+    const startInput = document.getElementById('startDate');
+    const endInput = document.getElementById('endDate');
+    const errorSpan = document.getElementById('dateError');
+
+    if (startInput.value && endInput.value) {
+        const start = new Date(startInput.value);
+        const end = new Date(endInput.value);
+
+        if (start >= end) {
+            errorSpan.classList.remove('hidden');
+            startInput.classList.add('border-red-500');
+            endInput.classList.add('border-red-500');
+        } else {
+            errorSpan.classList.add('hidden');
+            startInput.classList.remove('border-red-500');
+            endInput.classList.remove('border-red-500');
+        }
+    }
+}
+
+function updateDateRange() {
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+    const urlPattern = document.getElementById('urlPattern').value;
+    let url = `/service/{{ service.id }}/sessions?startDate=${start}&endDate=${end}`;
+    if (urlPattern) {
+        url += `&urlPattern=${encodeURIComponent(urlPattern)}`;
+    }
+    window.location.href = url;
+}
+
+// Run validation on page load
+document.addEventListener('DOMContentLoaded', validateDateRange);
+</script>
+{% endblock %}

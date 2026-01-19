@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Shymini{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Services</h1>
+    <p class="text-gray-600">Manage your tracked websites</p>
+</div>
+
+{% if services.is_empty() %}
+<div class="bg-white rounded-lg shadow p-8 text-center">
+    <h2 class="text-xl font-semibold text-gray-900 mb-2">No services yet</h2>
+    <p class="text-gray-600 mb-4">Create your first service to start tracking analytics.</p>
+    <a href="/service/new" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700">
+        Create Service
+    </a>
+</div>
+{% else %}
+<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    {% for item in services %}
+    <a href="/service/{{ item.service.id }}" class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">{{ item.service.name }}</h3>
+                {% if !item.service.link.is_empty() %}
+                <p class="text-sm text-gray-500 truncate">{{ item.service.link }}</p>
+                {% endif %}
+            </div>
+            <span class="{% if item.service.status == crate::domain::ServiceStatus::Active %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %} text-xs px-2 py-1 rounded">
+                {{ item.service.status }}
+            </span>
+        </div>
+        <div class="flex justify-between text-sm">
+            <div>
+                <span class="text-gray-500">Sessions (24h)</span>
+                <p class="font-semibold text-gray-900">{{ item.session_count }}</p>
+            </div>
+            <div>
+                <span class="text-gray-500">Hits (24h)</span>
+                <p class="font-semibold text-gray-900">{{ item.hit_count }}</p>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

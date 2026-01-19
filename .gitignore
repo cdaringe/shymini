@@ -1,0 +1,42 @@
+# Build artifacts
+/target/
+
+/*.db-shm
+/*.db-wal
+
+# Cargo lock for binaries
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database files
+*.db
+*.db-journal
+*.sqlite
+
+# GeoIP databases
+*.mmdb
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# E2E tests
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/dist/

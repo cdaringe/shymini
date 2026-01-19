@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  shymini:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - shymini-data:/data
+      # optional
+      # - ./GeoLite2-City.mmdb:/etc/GeoLite2-City.mmdb:ro
+      # - ./GeoLite2-ASN.mmdb:/etc/GeoLite2-ASN.mmdb:ro
+    environment:
+      - SHYMINI__HOST=0.0.0.0
+      - SHYMINI__PORT=8080
+      - SHYMINI__DATABASE_PATH=/data/shymini.db
+      # optional
+      # - SHYMINI__MAXMIND_CITY_DB=/etc/GeoLite2-City.mmdb
+      # - SHYMINI__MAXMIND_ASN_DB=/etc/GeoLite2-ASN.mmdb
+      # Privacy settings
+      - SHYMINI__BLOCK_ALL_IPS=false
+      - SHYMINI__AGGRESSIVE_HASH_SALTING=false
+      # Script settings
+      - SHYMINI__SCRIPT_HEARTBEAT_FREQUENCY_MS=5000
+      # Cache settings
+      - SHYMINI__CACHE_MAX_ENTRIES=10000
+      - SHYMINI__CACHE_TTL_SECS=3600
+      - SHYMINI__SESSION_MEMORY_TIMEOUT_SECS=1800
+      # Logging
+      - RUST_LOG=info
+
+  # Optional: PostgreSQL database
+  # postgres:
+  #   image: postgres:15-alpine
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   environment:
+  #     - POSTGRES_USER=shymini
+  #     - POSTGRES_PASSWORD=shymini
+  #     - POSTGRES_DB=shymini
+
+volumes:
+  shymini-data:
+  # postgres-data:

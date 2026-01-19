@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}{{ service.name }} - Shymini{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ service.name }}</h1>
+        {% if !service.link.is_empty() %}
+        <a href="{{ service.link }}" target="_blank" class="text-indigo-600 hover:underline text-sm">{{ service.link }}</a>
+        {% endif %}
+    </div>
+    <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2">
+            <input type="text" id="urlPattern" name="urlPattern" value="{{ url_pattern }}"
+                   placeholder="URL regex filter"
+                   class="border rounded px-3 py-2 text-sm w-40"
+                   hx-get="/service/{{ service.id }}/stats"
+                   hx-target="#stats-container"
+                   hx-trigger="change, keyup delay:500ms"
+                   hx-include="#startDate, #endDate">
+            <input type="datetime-local" id="startDate" name="startDate" value="{{ start_date }}"
+                   class="border rounded px-3 py-2 text-sm"
+                   hx-get="/service/{{ service.id }}/stats"
+                   hx-target="#stats-container"
+                   hx-include="#endDate, #urlPattern"
+                   onchange="validateDateRange()">
+            <span class="text-gray-500">to</span>
+            <input type="datetime-local" id="endDate" name="endDate" value="{{ end_date }}"
+                   class="border rounded px-3 py-2 text-sm"
+                   hx-get="/service/{{ service.id }}/stats"
+                   hx-target="#stats-container"
+                   hx-include="#startDate, #urlPattern"
+                   onchange="validateDateRange()">
+            <span id="dateError" class="text-red-500 text-xs hidden ml-2">Start must be before end</span>
+        </div>
+        <a href="/service/{{ service.id }}/manage" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
+            Manage
+        </a>
+    </div>
+</div>
+
+{% if !stats.has_hits %}
+<div class="bg-white rounded-lg shadow p-8">
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">Get Started</h2>
+    <p class="text-gray-600 mb-4">Add this script to your website to start tracking:</p>
+    <div class="bg-gray-100 rounded p-4 font-mono text-sm overflow-x-auto">
+        <pre>&lt;script defer src="http://localhost:8080/trace/app_{{ service.tracking_id }}.js"&gt;&lt;/script&gt;</pre>
+    </div>
+    <p class="text-gray-500 text-sm mt-4">
+        Or use the pixel tracker for no-JS tracking:
+    </p>
+    <div class="bg-gray-100 rounded p-4 font-mono text-sm overflow-x-auto mt-2">
+        <pre>&lt;img src="http://localhost:8080/trace/px_{{ service.tracking_id }}.gif" style="display:none"&gt;</pre>
+    </div>
+</div>
+{% else %}
+<div id="stats-container">
+<!-- Stats Cards -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Sessions</p>
+        <p class="text-2xl font-bold text-gray-900">{{ stats.session_count }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Hits</p>
+        <p class="text-2xl font-bold text-gray-900">{{ stats.hit_count }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Load Time</p>
+        <p class="text-2xl font-bold text-gray-900">{% match stats.avg_load_time %}{% when Some with (v) %}{{ v }}ms{% when None %}?{% endmatch %}</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Bounce Rate</p>
+        <p class="text-2xl font-bold text-gray-900">{% match stats.bounce_rate_pct %}{% when Some with (v) %}{{ v }}%{% when None %}?{% endmatch %}</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Duration</p>
+        <p class="text-2xl font-bold text-gray-900">{% match stats.avg_session_duration %}{% when Some with (v) %}{{ v }}s{% when None %}?{% endmatch %}</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Hits/Session</p>
+        <p class="text-2xl font-bold text-gray-900">{% match stats.avg_hits_per_session %}{% when Some with (v) %}{{ v }}{% when None %}?{% endmatch %}</p>
+    </div>
+</div>
+
+<!-- Chart -->
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+    <div id="chart"></div>
+</div>
+
+<script>
+(function() {
+    // Destroy existing chart if present to prevent memory leaks
+    if (window.shyminiChart) {
+        window.shyminiChart.destroy();
+        window.shyminiChart = null;
+    }
+
+    var chartData = {
+        labels: [{% for label in stats.chart_data.labels %}"{{ label }}"{% if !loop.last %},{% endif %}{% endfor %}],
+        sessions: [{% for s in stats.chart_data.sessions %}{{ s }}{% if !loop.last %},{% endif %}{% endfor %}],
+        hits: [{% for h in stats.chart_data.hits %}{{ h }}{% if !loop.last %},{% endif %}{% endfor %}]
+    };
+
+    if (chartData.labels && chartData.labels.length > 0) {
+        var options = {
+            series: [
+                { name: 'Sessions', data: chartData.sessions },
+                { name: 'Hits', data: chartData.hits }
+            ],
+            chart: {
+                type: 'area',
+                height: 300,
+                toolbar: { show: false },
+                zoom: { enabled: false }
+            },
+            dataLabels: { enabled: false },
+            stroke: { curve: 'smooth', width: 2 },
+            fill: {
+                type: 'gradient',
+                gradient: { opacityFrom: 0.4, opacityTo: 0.1 }
+            },
+            xaxis: {
+                categories: chartData.labels,
+                labels: {
+                    rotate: -45,
+                    rotateAlways: true
+                }
+            },
+            yaxis: { min: 0 },
+            colors: ['#6366f1', '#10b981'],
+            legend: { position: 'top' }
+        };
+
+        window.shyminiChart = new ApexCharts(document.querySelector("#chart"), options);
+        window.shyminiChart.render();
+    }
+})();
+</script>
+</div>
+
+<!-- Locations and Geography Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <!-- Locations -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Top Pages</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">Location</th>
+                        <th class="text-right pb-2">Hits</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for loc in stats.locations %}
+                    <tr class="border-t">
+                        <td class="py-2 truncate max-w-xs">{{ loc.value }}</td>
+                        <td class="py-2 text-right text-gray-600">{{ loc.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Countries -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Countries</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">Country</th>
+                        <th class="text-right pb-2">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for country in stats.countries %}
+                    <tr class="border-t">
+                        <td class="py-2">{{ country.value }}</td>
+                        <td class="py-2 text-right text-gray-600">{{ country.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Referrers -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Referrers</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">Source</th>
+                        <th class="text-right pb-2">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for ref in stats.referrers %}
+                    <tr class="border-t">
+                        <td class="py-2 truncate max-w-xs">{% if ref.value.is_empty() %}Direct{% else %}{{ ref.value }}{% endif %}</td>
+                        <td class="py-2 text-right text-gray-600">{{ ref.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Browsers -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Browsers</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">Browser</th>
+                        <th class="text-right pb-2">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for browser in stats.browsers %}
+                    <tr class="border-t">
+                        <td class="py-2">{% if browser.value.is_empty() %}Unknown{% else %}{{ browser.value }}{% endif %}</td>
+                        <td class="py-2 text-right text-gray-600">{{ browser.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Operating Systems -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Operating Systems</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">OS</th>
+                        <th class="text-right pb-2">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for os in stats.operating_systems %}
+                    <tr class="border-t">
+                        <td class="py-2">{% if os.value.is_empty() %}Unknown{% else %}{{ os.value }}{% endif %}</td>
+                        <td class="py-2 text-right text-gray-600">{{ os.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Device Types -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Device Types</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">Type</th>
+                        <th class="text-right pb-2">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for dt in stats.device_types %}
+                    <tr class="border-t">
+                        <td class="py-2">{{ dt.value }}</td>
+                        <td class="py-2 text-right text-gray-600">{{ dt.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Sessions -->
+<div class="bg-white rounded-lg shadow">
+    <div class="p-4 border-b flex justify-between items-center">
+        <h3 class="font-semibold text-gray-900">Recent Sessions</h3>
+        <a href="/service/{{ service.id }}/sessions" class="text-indigo-600 hover:underline text-sm">
+            View all →
+        </a>
+    </div>
+    <div class="p-4">
+        {% if sessions.is_empty() %}
+        <p class="text-gray-500 text-center py-4">No sessions found</p>
+        {% else %}
+        <table class="w-full">
+            <thead class="text-xs text-gray-500 uppercase border-b">
+                <tr>
+                    <th class="text-left py-2">Session</th>
+                    <th class="text-left py-2">Browser</th>
+                    <th class="text-left py-2">OS</th>
+                    <th class="text-left py-2">Country</th>
+                    <th class="text-left py-2">Device</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm">
+                {% for session in sessions %}
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="py-2">
+                        <a href="/service/{{ service.id }}/sessions/{{ session.id }}" class="text-indigo-600 hover:underline">
+                            {% if session.identifier.is_empty() %}{{ session.id }}{% else %}{{ session.identifier }}{% endif %}
+                        </a>
+                    </td>
+                    <td class="py-2 text-gray-600">{% if session.browser.is_empty() %}Unknown{% else %}{{ session.browser }}{% endif %}</td>
+                    <td class="py-2 text-gray-600">{% if session.os.is_empty() %}Unknown{% else %}{{ session.os }}{% endif %}</td>
+                    <td class="py-2 text-gray-600">{% if session.country.is_empty() %}Unknown{% else %}{{ session.country }}{% endif %}</td>
+                    <td class="py-2 text-gray-600">{{ session.device_type }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_body %}
+<script>
+function validateDateRange() {
+    const startInput = document.getElementById('startDate');
+    const endInput = document.getElementById('endDate');
+    const errorSpan = document.getElementById('dateError');
+
+    if (startInput.value && endInput.value) {
+        const start = new Date(startInput.value);
+        const end = new Date(endInput.value);
+
+        if (start >= end) {
+            errorSpan.classList.remove('hidden');
+            startInput.classList.add('border-red-500');
+            endInput.classList.add('border-red-500');
+        } else {
+            errorSpan.classList.add('hidden');
+            startInput.classList.remove('border-red-500');
+            endInput.classList.remove('border-red-500');
+        }
+    }
+}
+// Run validation on page load
+document.addEventListener('DOMContentLoaded', validateDateRange);
+</script>
+{% endblock %}

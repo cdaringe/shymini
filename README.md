@@ -57,7 +57,7 @@ All configuration is done via environment variables with the `SHYMINI__` prefix:
 | `SHYMINI__HOST` | `0.0.0.0` | Server bind address |
 | `SHYMINI__PORT` | `8080` | Server port |
 | `SHYMINI__DATABASE_URL` | - | PostgreSQL connection URL |
-| `SHYMINI__DATABASE_PATH` | shymini.db | SQLite database file path |
+| `SHYMINI__DATABASE_PATH` | shymini.db?mode=rwc | SQLite database file path |
 | `SHYMINI__MAXMIND_CITY_DB` | - | Path to GeoLite2-City.mmdb |
 | `SHYMINI__MAXMIND_ASN_DB` | - | Path to GeoLite2-ASN.mmdb |
 | `SHYMINI__BLOCK_ALL_IPS` | `false` | Never store IP addresses |

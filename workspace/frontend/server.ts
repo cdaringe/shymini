@@ -9,8 +9,8 @@
  *
  * Environment variables:
  *   FE_PORT         - Port to listen on (default: 3333)
- *   TRACKER_URL     - Shymini tracker base URL (default: http://shymini.localhost:3000)
- *   SERVICE_ID      - Shymini service UUID (required for tracking to work)
+ *   TRACKER_URL     - shymini tracker base URL (default: http://shymini.localhost:3000)
+ *   SERVICE_ID      - shymini service UUID (required for tracking to work)
  */
 
 const FE_PORT = parseInt(Deno.env.get("FE_PORT") || "3333");
@@ -29,11 +29,11 @@ function log(message: string) {
 function trackingScript(): string {
   if (SERVICE_ID === "YOUR_SERVICE_ID_HERE") {
     return `
-    <!-- Shymini tracking NOT configured. Set SERVICE_ID env var -->
-    <script>console.warn('Shymini: Set SERVICE_ID environment variable to enable tracking');</script>`;
+    <!-- shymini tracking NOT configured. Set SERVICE_ID env var -->
+    <script>console.warn('shymini: Set SERVICE_ID environment variable to enable tracking');</script>`;
   }
   return `
-    <!-- Shymini Analytics -->
+    <!-- shymini Analytics -->
     <script defer src="${TRACKER_URL}/trace/${SERVICE_ID}.js"></script>`;
 }
 
@@ -145,7 +145,7 @@ function layout(title: string, content: string): string {
     ${content}
   </main>
   <footer>
-    <p>Test site for Shymini tracking development</p>
+    <p>Test site for shymini tracking development</p>
     <p>Tracker: <code>${TRACKER_URL}</code> | Service: <code>${SERVICE_ID}</code></p>
   </footer>
 </body>
@@ -157,13 +157,13 @@ const pages: Record<string, () => string> = {
   "/": () => layout("Home", `
     <div class="hero">
       <h1>Welcome to TestSite</h1>
-      <p>This is a dummy frontend for testing Shymini analytics tracking.</p>
+      <p>This is a dummy frontend for testing shymini analytics tracking.</p>
       <a href="/products" class="btn">View Products</a>
     </div>
     ${SERVICE_ID === "YOUR_SERVICE_ID_HERE" ? `
     <div class="debug">
       <strong>Tracking not configured!</strong><br>
-      Set the <code>SERVICE_ID</code> environment variable to your Shymini service UUID.<br>
+      Set the <code>SERVICE_ID</code> environment variable to your shymini service UUID.<br>
       Example: <code>SERVICE_ID=abc-123-def deno task fe</code>
     </div>
     ` : ""}
@@ -190,7 +190,7 @@ const pages: Record<string, () => string> = {
     <div class="card">
       <h1>About Us</h1>
       <p>We are a fictional company created for testing web analytics.</p>
-      <p>This page exists to test that Shymini correctly tracks page views across different URLs.</p>
+      <p>This page exists to test that shymini correctly tracks page views across different URLs.</p>
       <h2>Our Mission</h2>
       <p>To provide realistic test pages for analytics development and debugging.</p>
       <h2>Our Team</h2>

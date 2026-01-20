@@ -1,4 +1,4 @@
-var Shymini = (function() {
+var shymini = (function() {
   // Capture script origin at load time (before document.currentScript becomes null)
   var scriptSrc = document.currentScript ? document.currentScript.src : "";
   var scriptOrigin = "";
@@ -15,11 +15,11 @@ var Shymini = (function() {
   heartbeatTaskId: null,
   skipHeartbeat: false,
   sendHeartbeat: function () {
-    if (document.hidden || Shymini.skipHeartbeat) {
+    if (document.hidden || shymini.skipHeartbeat) {
       return;
     }
 
-    Shymini.skipHeartbeat = true;
+    shymini.skipHeartbeat = true;
 
     fetch(scriptOrigin + "{{ endpoint }}", {
       method: "POST",
@@ -27,7 +27,7 @@ var Shymini = (function() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        idempotency: Shymini.idempotency,
+        idempotency: shymini.idempotency,
         referrer: document.referrer,
         location: window.location.href,
         loadTime:
@@ -37,27 +37,27 @@ var Shymini = (function() {
       keepalive: true
     })
     .then(function() {
-      Shymini.skipHeartbeat = false;
+      shymini.skipHeartbeat = false;
     })
     .catch(function() {
-      Shymini.skipHeartbeat = false;
+      shymini.skipHeartbeat = false;
     });
   },
   newPageLoad: function () {
-    if (Shymini.heartbeatTaskId != null) {
-      clearInterval(Shymini.heartbeatTaskId);
+    if (shymini.heartbeatTaskId != null) {
+      clearInterval(shymini.heartbeatTaskId);
     }
-    Shymini.idempotency = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    Shymini.skipHeartbeat = false;
-    Shymini.heartbeatTaskId = setInterval(Shymini.sendHeartbeat, {{ heartbeat_frequency }});
-    Shymini.sendHeartbeat();
+    shymini.idempotency = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    shymini.skipHeartbeat = false;
+    shymini.heartbeatTaskId = setInterval(shymini.sendHeartbeat, {{ heartbeat_frequency }});
+    shymini.sendHeartbeat();
   }
 };
 })();
 
-window.addEventListener("load", Shymini.newPageLoad);
+window.addEventListener("load", shymini.newPageLoad);
 {% if !script_inject.is_empty() %}
-// The following script is not part of Shymini, and was instead
+// The following script is not part of shymini, and was instead
 // provided by this site's administrator.
 // -- START --
 {{ script_inject }}

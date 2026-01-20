@@ -3,15 +3,15 @@
  *
  * Routes based on hostname:
  *   - fe.localhost:3000      → Frontend server (default: http://127.0.0.1:3333)
- *   - shymini.localhost:3000  → Shymini backend (default: http://127.0.0.1:8080)
- *   - localhost:3000         → Shymini backend (default)
+ *   - shymini.localhost:3000  → shymini backend (default: http://127.0.0.1:8080)
+ *   - localhost:3000         → shymini backend (default)
  *
  * Usage:
  *   deno run --allow-net --allow-env --allow-read server.ts
  *
  * Environment variables:
  *   PROXY_PORT     - Port to listen on (default: 3000)
- *   BACKEND_URL    - Shymini backend URL (default: http://127.0.0.1:8080)
+ *   BACKEND_URL    - shymini backend URL (default: http://127.0.0.1:8080)
  *   FRONTEND_URL   - Frontend server URL (default: http://127.0.0.1:3333)
  *   VERBOSE        - Enable verbose logging (default: false)
  */
@@ -180,7 +180,7 @@ async function handler(request: Request): Promise<Response> {
     const html = `<!DOCTYPE html>
 <html>
 <head>
-  <title>Shymini Dev Proxy</title>
+  <title>shymini Dev Proxy</title>
   <style>
     body { font-family: system-ui, sans-serif; max-width: 700px; margin: 50px auto; padding: 20px; }
     h1 { color: #4f46e5; }
@@ -193,7 +193,7 @@ async function handler(request: Request): Promise<Response> {
   </style>
 </head>
 <body>
-  <h1>Shymini Dev Proxy</h1>
+  <h1>shymini Dev Proxy</h1>
   <div class="info">
     <p><strong>Proxy Port:</strong> ${PROXY_PORT}</p>
     <p><strong>Backend:</strong> ${BACKEND_URL}</p>
@@ -203,14 +203,14 @@ async function handler(request: Request): Promise<Response> {
   <h2>Routing</h2>
   <table>
     <tr><th>URL</th><th>Upstream</th></tr>
-    <tr><td><a href="http://shymini.localhost:${PROXY_PORT}">http://shymini.localhost:${PROXY_PORT}</a></td><td>Shymini Backend</td></tr>
+    <tr><td><a href="http://shymini.localhost:${PROXY_PORT}">http://shymini.localhost:${PROXY_PORT}</a></td><td>shymini Backend</td></tr>
     <tr><td><a href="http://fe.localhost:${PROXY_PORT}">http://fe.localhost:${PROXY_PORT}</a></td><td>Test Frontend</td></tr>
-    <tr><td><a href="http://localhost:${PROXY_PORT}">http://localhost:${PROXY_PORT}</a></td><td>Shymini Backend</td></tr>
+    <tr><td><a href="http://localhost:${PROXY_PORT}">http://localhost:${PROXY_PORT}</a></td><td>shymini Backend</td></tr>
   </table>
 
   <h2>Quick Links</h2>
   <ul>
-    <li><a href="http://shymini.localhost:${PROXY_PORT}">Shymini Dashboard</a></li>
+    <li><a href="http://shymini.localhost:${PROXY_PORT}">shymini Dashboard</a></li>
     <li><a href="http://fe.localhost:${PROXY_PORT}">Test Frontend</a></li>
     <li><a href="/__proxy/test">Interactive Tracking Test</a></li>
   </ul>
@@ -235,7 +235,7 @@ log(`Starting reverse proxy...`);
 log(`  Listening on: http://localhost:${PROXY_PORT}`);
 log(``);
 log(`  Routing:`);
-log(`    http://shymini.localhost:${PROXY_PORT}  →  ${BACKEND_URL} (Shymini)`);
+log(`    http://shymini.localhost:${PROXY_PORT}  →  ${BACKEND_URL} (shymini)`);
 log(`    http://fe.localhost:${PROXY_PORT}      →  ${FRONTEND_URL} (Frontend)`);
 log(`    http://localhost:${PROXY_PORT}         →  ${BACKEND_URL} (default)`);
 log(``);

@@ -1,1 +1,1 @@
-var Shymini = { dnt: true };
+var shymini = { dnt: true };

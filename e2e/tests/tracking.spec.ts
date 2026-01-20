@@ -58,8 +58,9 @@ test.describe('Tracking Ingestion', () => {
     });
 
     const idempotencyKey = 'heartbeat-test-key';
+    const heartbeatCount = 5;
 
-    // Send multiple requests with same idempotency key
+    // Send initial hit
     await sendScriptTrack(server.baseURL, trackingId, {
       idempotency: idempotencyKey,
       location: '/heartbeat-page',
@@ -71,20 +72,38 @@ test.describe('Tracking Ingestion', () => {
 
     await page.waitForTimeout(200);
 
-    await sendScriptTrack(server.baseURL, trackingId, {
-      idempotency: idempotencyKey,
-      location: '/heartbeat-page',
-      loadTime: 100,
-    }, {
-      origin: 'http://example.com',
-      userAgent: 'Mozilla/5.0 HeartbeatTest/1.0',
-    });
+    // Send multiple heartbeats with same idempotency key
+    for (let i = 0; i < heartbeatCount; i++) {
+      await sendScriptTrack(server.baseURL, trackingId, {
+        idempotency: idempotencyKey,
+        location: '/heartbeat-page',
+        loadTime: 100,
+      }, {
+        origin: 'http://example.com',
+        userAgent: 'Mozilla/5.0 HeartbeatTest/1.0',
+      });
+      await page.waitForTimeout(100);
+    }
 
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // Should still be just one session
     await page.goto(`${server.baseURL}/service/${serviceId}/sessions`);
     await expect(page.locator('table tbody tr')).toHaveCount(1);
+
+    // Get session ID from the page
+    const sessionLink = page.locator('table tbody tr:first-child a');
+    const sessionHref = await sessionLink.getAttribute('href');
+    const sessionId = sessionHref?.split('/').pop();
+
+    // Verify via API that there's only 1 hit and heartbeats increased
+    const hitsResponse = await fetch(`${server.baseURL}/api/sessions/${sessionId}/hits`);
+    const hitsJson = await hitsResponse.json();
+
+    expect(hitsJson.success).toBe(true);
+    expect(hitsJson.data).toHaveLength(1); // Only 1 hit, not multiple
+    expect(hitsJson.data[0].heartbeats).toBeGreaterThanOrEqual(heartbeatCount); // Heartbeats incremented
+    expect(hitsJson.data[0].location).toBe('/heartbeat-page');
   });
 
   test('same IP and UA creates one session', async ({ page, server }) => {

@@ -5,7 +5,8 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
     Form,
 };
-use chrono::{Duration, Utc};
+use chrono::{Duration, TimeZone, Utc};
+use chrono_tz::Tz;
 use regex::Regex;
 use serde::Deserialize;
 use tracing::error;
@@ -28,6 +29,8 @@ pub struct DateRangeQuery {
     pub end_date: Option<String>,
     #[serde(rename = "urlPattern")]
     pub url_pattern: Option<String>,
+    /// Timezone for interpreting dates and displaying results (e.g., "America/New_York")
+    pub tz: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,6 +42,8 @@ pub struct PaginationQuery {
     pub end_date: Option<String>,
     #[serde(rename = "urlPattern")]
     pub url_pattern: Option<String>,
+    /// Timezone for interpreting dates and displaying results (e.g., "America/New_York")
+    pub tz: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -54,12 +59,39 @@ pub struct ServiceForm {
     pub script_inject: Option<String>,
 }
 
-/// Parse a date/datetime string, supporting both date-only (YYYY-MM-DD) and
-/// datetime-local (YYYY-MM-DDTHH:MM) formats
-fn parse_datetime_string(s: &str, is_end: bool) -> Option<chrono::DateTime<Utc>> {
-    // Try datetime-local format first (YYYY-MM-DDTHH:MM)
+/// Parse a timezone string, defaulting to Pacific Time if invalid or not provided
+fn parse_timezone(tz_str: Option<&str>) -> Tz {
+    tz_str
+        .and_then(|s| s.parse::<Tz>().ok())
+        .unwrap_or(chrono_tz::America::Los_Angeles)
+}
+
+/// Parse a date/datetime string, interpreting it in the given timezone,
+/// and convert to UTC. Supports:
+/// - ISO 8601 with timezone (2024-01-19T15:30:00.000Z)
+/// - datetime-local (YYYY-MM-DDTHH:MM)
+/// - date-only (YYYY-MM-DD)
+fn parse_datetime_string(s: &str, is_end: bool, tz: Tz) -> Option<chrono::DateTime<Utc>> {
+    // Try full ISO 8601 / RFC 3339 format first (already includes timezone)
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
+        return Some(dt.with_timezone(&Utc));
+    }
+
+    // Try ISO 8601 with seconds but no timezone (interpret in user's tz)
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S") {
+        return tz
+            .from_local_datetime(&dt)
+            .single()
+            .map(|dt| dt.with_timezone(&Utc));
+    }
+
+    // Try datetime-local format (YYYY-MM-DDTHH:MM)
     if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M") {
-        return Some(dt.and_utc());
+        // Interpret the naive datetime as being in the specified timezone
+        return tz
+            .from_local_datetime(&dt)
+            .single()
+            .map(|dt| dt.with_timezone(&Utc));
     }
 
     // Fall back to date-only format (YYYY-MM-DD)
@@ -69,34 +101,34 @@ fn parse_datetime_string(s: &str, is_end: bool) -> Option<chrono::DateTime<Utc>>
         } else {
             d.and_hms_opt(0, 0, 0).unwrap()
         };
-        return Some(time.and_utc());
+        // Interpret the naive datetime as being in the specified timezone
+        return tz
+            .from_local_datetime(&time)
+            .single()
+            .map(|dt| dt.with_timezone(&Utc));
     }
 
     None
 }
 
-fn parse_date_range(query: &DateRangeQuery) -> (chrono::DateTime<Utc>, chrono::DateTime<Utc>) {
+fn parse_date_range(query: &DateRangeQuery) -> (chrono::DateTime<Utc>, chrono::DateTime<Utc>, Tz) {
+    let tz = parse_timezone(query.tz.as_deref());
     let now = Utc::now();
     let default_start = now - Duration::days(30);
 
     let start = query
         .start_date
         .as_ref()
-        .and_then(|s| parse_datetime_string(s, false))
+        .and_then(|s| parse_datetime_string(s, false, tz))
         .unwrap_or(default_start);
 
     let end = query
         .end_date
         .as_ref()
-        .and_then(|s| parse_datetime_string(s, true))
+        .and_then(|s| parse_datetime_string(s, true, tz))
         .unwrap_or(now);
 
-    // Ensure start <= end; if not, swap them
-    if start > end {
-        (end, start)
-    } else {
-        (start, end)
-    }
+    (start, end, tz)
 }
 
 fn parse_url_pattern(pattern: &Option<String>) -> Option<Regex> {
@@ -222,7 +254,7 @@ pub async fn service_detail(
         }
     };
 
-    let (start, end) = parse_date_range(&query);
+    let (start, end, tz) = parse_date_range(&query);
     let url_pattern = parse_url_pattern(&query.url_pattern);
 
     let hide_referrer_regex = if service.hide_referrer_regex.is_empty() {
@@ -239,6 +271,7 @@ pub async fn service_detail(
         hide_referrer_regex.as_ref(),
         url_pattern.as_ref(),
         state.settings.active_user_timeout_ms(),
+        tz,
     )
     .await
     {
@@ -267,12 +300,16 @@ pub async fn service_detail(
         }
     };
 
+    // Format start/end dates in user's timezone for the form inputs
+    let start_local = start.with_timezone(&tz);
+    let end_local = end.with_timezone(&tz);
+
     let template = ServiceDetailTemplate {
         service,
         stats,
         sessions,
-        start_date: start.format("%Y-%m-%dT%H:%M").to_string(),
-        end_date: end.format("%Y-%m-%dT%H:%M").to_string(),
+        start_date: start_local.format("%Y-%m-%dT%H:%M").to_string(),
+        end_date: end_local.format("%Y-%m-%dT%H:%M").to_string(),
         url_pattern: query.url_pattern.clone().unwrap_or_default(),
         results_limit: RESULTS_LIMIT,
     };
@@ -312,8 +349,9 @@ pub async fn session_list(
         start_date: query.start_date.clone(),
         end_date: query.end_date.clone(),
         url_pattern: query.url_pattern.clone(),
+        tz: query.tz.clone(),
     };
-    let (start, end) = parse_date_range(&date_query);
+    let (start, end, tz) = parse_date_range(&date_query);
     let url_pattern = parse_url_pattern(&query.url_pattern);
     let page = query.page.unwrap_or(1).max(1);
     let offset = (page - 1) * PAGE_SIZE;
@@ -339,13 +377,17 @@ pub async fn session_list(
     let has_next = sessions.len() > PAGE_SIZE as usize;
     let sessions: Vec<_> = sessions.into_iter().take(PAGE_SIZE as usize).collect();
 
+    // Format start/end dates in user's timezone for the form inputs
+    let start_local = start.with_timezone(&tz);
+    let end_local = end.with_timezone(&tz);
+
     let template = SessionListTemplate {
         service,
         sessions,
         page,
         has_next,
-        start_date: start.format("%Y-%m-%dT%H:%M").to_string(),
-        end_date: end.format("%Y-%m-%dT%H:%M").to_string(),
+        start_date: start_local.format("%Y-%m-%dT%H:%M").to_string(),
+        end_date: end_local.format("%Y-%m-%dT%H:%M").to_string(),
         url_pattern: query.url_pattern.clone().unwrap_or_default(),
     };
 
@@ -358,11 +400,20 @@ pub async fn session_list(
     }
 }
 
+/// Query parameters for timezone
+#[derive(Debug, Deserialize)]
+pub struct TzQuery {
+    pub tz: Option<String>,
+}
+
 /// GET /service/:id/sessions/:session_id
 pub async fn session_detail(
     State(state): State<AppState>,
     Path((service_id, session_id)): Path<(String, String)>,
+    Query(query): Query<TzQuery>,
 ) -> Response {
+    let tz = parse_timezone(query.tz.as_deref());
+
     let service_id: ServiceId = match service_id.parse() {
         Ok(id) => id,
         Err(_) => return (StatusCode::BAD_REQUEST, "Invalid service ID").into_response(),
@@ -403,10 +454,17 @@ pub async fn session_detail(
         }
     };
 
+    // Convert to display structs with formatted timestamps
+    let session_display = SessionDisplay::from_session(session, tz);
+    let hits_display: Vec<HitDisplay> = hits
+        .into_iter()
+        .map(|h| HitDisplay::from_hit(h, tz))
+        .collect();
+
     let template = SessionDetailTemplate {
         service,
-        session,
-        hits,
+        session: session_display,
+        hits: hits_display,
     };
 
     match template.render() {
@@ -440,7 +498,7 @@ pub async fn location_list(
         }
     };
 
-    let (start, end) = parse_date_range(&query);
+    let (start, end, tz) = parse_date_range(&query);
     let url_pattern = parse_url_pattern(&query.url_pattern);
 
     let hide_referrer_regex = if service.hide_referrer_regex.is_empty() {
@@ -457,6 +515,7 @@ pub async fn location_list(
         hide_referrer_regex.as_ref(),
         url_pattern.as_ref(),
         state.settings.active_user_timeout_ms(),
+        tz,
     )
     .await
     {
@@ -467,12 +526,16 @@ pub async fn location_list(
         }
     };
 
+    // Format start/end dates in user's timezone for the form inputs
+    let start_local = start.with_timezone(&tz);
+    let end_local = end.with_timezone(&tz);
+
     let template = LocationListTemplate {
         service,
         locations: stats.locations,
         total_hits: stats.hit_count,
-        start_date: start.format("%Y-%m-%dT%H:%M").to_string(),
-        end_date: end.format("%Y-%m-%dT%H:%M").to_string(),
+        start_date: start_local.format("%Y-%m-%dT%H:%M").to_string(),
+        end_date: end_local.format("%Y-%m-%dT%H:%M").to_string(),
     };
 
     match template.render() {
@@ -674,7 +737,7 @@ pub async fn stats_partial(
         Err(_) => return (StatusCode::NOT_FOUND, "Service not found").into_response(),
     };
 
-    let (start, end) = parse_date_range(&query);
+    let (start, end, tz) = parse_date_range(&query);
     let url_pattern = parse_url_pattern(&query.url_pattern);
 
     let hide_referrer_regex = if service.hide_referrer_regex.is_empty() {
@@ -691,6 +754,7 @@ pub async fn stats_partial(
         hide_referrer_regex.as_ref(),
         url_pattern.as_ref(),
         state.settings.active_user_timeout_ms(),
+        tz,
     )
     .await
     {

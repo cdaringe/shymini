@@ -4,7 +4,8 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use chrono::{Duration, Utc};
+use chrono::{Duration, TimeZone, Utc};
+use chrono_tz::Tz;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tracing::error;
@@ -22,6 +23,8 @@ pub struct DateRangeQuery {
     pub end_date: Option<String>,
     #[serde(rename = "urlPattern")]
     pub url_pattern: Option<String>,
+    /// Timezone for interpreting dates and displaying results (e.g., "America/New_York")
+    pub tz: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -51,12 +54,37 @@ impl<T: Serialize> ApiResponse<T> {
     }
 }
 
-/// Parse a datetime string that may be either datetime-local format (YYYY-MM-DDTHH:MM)
-/// or date-only format (YYYY-MM-DD). For date-only, uses start/end of day based on is_end.
-fn parse_datetime_string(s: &str, is_end: bool) -> Option<chrono::DateTime<Utc>> {
-    // Try datetime-local format first (YYYY-MM-DDTHH:MM)
+/// Parse a timezone string, defaulting to Pacific Time if invalid or not provided
+fn parse_timezone(tz_str: Option<&str>) -> Tz {
+    tz_str
+        .and_then(|s| s.parse::<Tz>().ok())
+        .unwrap_or(chrono_tz::America::Los_Angeles)
+}
+
+/// Parse a datetime string. Supports:
+/// - ISO 8601 with timezone (2024-01-19T15:30:00.000Z)
+/// - datetime-local (YYYY-MM-DDTHH:MM)
+/// - date-only (YYYY-MM-DD)
+///
+/// Interprets naive times in the given timezone and converts to UTC.
+fn parse_datetime_string(s: &str, is_end: bool, tz: Tz) -> Option<chrono::DateTime<Utc>> {
+    // Try full ISO 8601 / RFC 3339 format first (already includes timezone)
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
+        return Some(dt.with_timezone(&Utc));
+    }
+    // Try ISO 8601 with seconds but no timezone (interpret in user's tz)
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S") {
+        return tz
+            .from_local_datetime(&dt)
+            .single()
+            .map(|dt| dt.with_timezone(&Utc));
+    }
+    // Try datetime-local format (YYYY-MM-DDTHH:MM)
     if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M") {
-        return Some(dt.and_utc());
+        return tz
+            .from_local_datetime(&dt)
+            .single()
+            .map(|dt| dt.with_timezone(&Utc));
     }
     // Fall back to date-only format (YYYY-MM-DD)
     if let Ok(d) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
@@ -65,33 +93,32 @@ fn parse_datetime_string(s: &str, is_end: bool) -> Option<chrono::DateTime<Utc>>
         } else {
             d.and_hms_opt(0, 0, 0).unwrap()
         };
-        return Some(time.and_utc());
+        return tz
+            .from_local_datetime(&time)
+            .single()
+            .map(|dt| dt.with_timezone(&Utc));
     }
     None
 }
 
-fn parse_date_range(query: &DateRangeQuery) -> (chrono::DateTime<Utc>, chrono::DateTime<Utc>) {
+fn parse_date_range(query: &DateRangeQuery) -> (chrono::DateTime<Utc>, chrono::DateTime<Utc>, Tz) {
+    let tz = parse_timezone(query.tz.as_deref());
     let now = Utc::now();
     let default_start = now - Duration::days(30);
 
     let start = query
         .start_date
         .as_ref()
-        .and_then(|s| parse_datetime_string(s, false))
+        .and_then(|s| parse_datetime_string(s, false, tz))
         .unwrap_or(default_start);
 
     let end = query
         .end_date
         .as_ref()
-        .and_then(|s| parse_datetime_string(s, true))
+        .and_then(|s| parse_datetime_string(s, true, tz))
         .unwrap_or(now);
 
-    // Ensure start <= end; if not, swap them
-    if start > end {
-        (end, start)
-    } else {
-        (start, end)
-    }
+    (start, end, tz)
 }
 
 fn parse_url_pattern(pattern: &Option<String>) -> Option<Regex> {
@@ -186,7 +213,7 @@ pub async fn get_service_stats(
         }
     };
 
-    let (start, end) = parse_date_range(&query);
+    let (start, end, tz) = parse_date_range(&query);
     let url_pattern = parse_url_pattern(&query.url_pattern);
 
     let hide_referrer_regex = if service.hide_referrer_regex.is_empty() {
@@ -203,6 +230,7 @@ pub async fn get_service_stats(
         hide_referrer_regex.as_ref(),
         url_pattern.as_ref(),
         state.settings.active_user_timeout_ms(),
+        tz,
     )
     .await
     {
@@ -235,7 +263,7 @@ pub async fn list_sessions(
         }
     };
 
-    let (start, end) = parse_date_range(&query);
+    let (start, end, _tz) = parse_date_range(&query);
     let url_pattern = parse_url_pattern(&query.url_pattern);
 
     match db::list_sessions(
@@ -363,8 +391,9 @@ mod tests {
             start_date: None,
             end_date: None,
             url_pattern: None,
+            tz: None,
         };
-        let (start, end) = parse_date_range(&query);
+        let (start, end, _tz) = parse_date_range(&query);
 
         // Default is last 30 days
         let now = Utc::now();
@@ -381,8 +410,9 @@ mod tests {
             start_date: Some("2024-01-01".to_string()),
             end_date: None,
             url_pattern: None,
+            tz: None,
         };
-        let (start, _end) = parse_date_range(&query);
+        let (start, _end, _tz) = parse_date_range(&query);
 
         assert_eq!(start.format("%Y-%m-%d").to_string(), "2024-01-01");
     }
@@ -390,24 +420,28 @@ mod tests {
     #[test]
     fn test_parse_date_range_with_end() {
         // Use a future date to avoid swap logic when default start is more recent
+        // Pass UTC timezone to get predictable results
         let query = DateRangeQuery {
             start_date: None,
             end_date: Some("2099-12-31".to_string()),
             url_pattern: None,
+            tz: Some("UTC".to_string()),
         };
-        let (_start, end) = parse_date_range(&query);
+        let (_start, end, _tz) = parse_date_range(&query);
 
         assert_eq!(end.format("%Y-%m-%d").to_string(), "2099-12-31");
     }
 
     #[test]
     fn test_parse_date_range_both_dates() {
+        // Pass UTC timezone to get predictable results
         let query = DateRangeQuery {
             start_date: Some("2024-06-01".to_string()),
             end_date: Some("2024-06-30".to_string()),
             url_pattern: None,
+            tz: Some("UTC".to_string()),
         };
-        let (start, end) = parse_date_range(&query);
+        let (start, end, _tz) = parse_date_range(&query);
 
         assert_eq!(start.format("%Y-%m-%d").to_string(), "2024-06-01");
         assert_eq!(end.format("%Y-%m-%d").to_string(), "2024-06-30");
@@ -419,8 +453,9 @@ mod tests {
             start_date: Some("not-a-date".to_string()),
             end_date: None,
             url_pattern: None,
+            tz: None,
         };
-        let (start, _end) = parse_date_range(&query);
+        let (start, _end, _tz) = parse_date_range(&query);
 
         // Should fall back to default (30 days ago)
         let now = Utc::now();
@@ -434,8 +469,9 @@ mod tests {
             start_date: None,
             end_date: Some("invalid".to_string()),
             url_pattern: None,
+            tz: None,
         };
-        let (_start, end) = parse_date_range(&query);
+        let (_start, end, _tz) = parse_date_range(&query);
 
         // Should fall back to now
         let now = Utc::now();
@@ -444,12 +480,14 @@ mod tests {
 
     #[test]
     fn test_parse_date_range_datetime_local_format() {
+        // Pass UTC timezone to get predictable results
         let query = DateRangeQuery {
             start_date: Some("2024-06-01T09:30".to_string()),
             end_date: Some("2024-06-30T17:45".to_string()),
             url_pattern: None,
+            tz: Some("UTC".to_string()),
         };
-        let (start, end) = parse_date_range(&query);
+        let (start, end, _tz) = parse_date_range(&query);
 
         assert_eq!(
             start.format("%Y-%m-%dT%H:%M").to_string(),
@@ -461,12 +499,14 @@ mod tests {
     #[test]
     fn test_parse_date_range_mixed_formats() {
         // Start as datetime-local, end as date-only
+        // Pass UTC timezone to get predictable results
         let query = DateRangeQuery {
             start_date: Some("2024-06-01T14:00".to_string()),
             end_date: Some("2024-06-30".to_string()),
             url_pattern: None,
+            tz: Some("UTC".to_string()),
         };
-        let (start, end) = parse_date_range(&query);
+        let (start, end, _tz) = parse_date_range(&query);
 
         assert_eq!(
             start.format("%Y-%m-%dT%H:%M").to_string(),
@@ -477,24 +517,6 @@ mod tests {
             end.format("%Y-%m-%d %H:%M:%S").to_string(),
             "2024-06-30 23:59:59"
         );
-    }
-
-    #[test]
-    fn test_parse_date_range_swaps_when_start_after_end() {
-        // When start > end, they should be swapped
-        let query = DateRangeQuery {
-            start_date: Some("2024-12-31T23:59".to_string()),
-            end_date: Some("2024-01-01T00:00".to_string()),
-            url_pattern: None,
-        };
-        let (start, end) = parse_date_range(&query);
-
-        // The earlier date should become start, later date should become end
-        assert_eq!(
-            start.format("%Y-%m-%dT%H:%M").to_string(),
-            "2024-01-01T00:00"
-        );
-        assert_eq!(end.format("%Y-%m-%dT%H:%M").to_string(), "2024-12-31T23:59");
     }
 
     #[test]

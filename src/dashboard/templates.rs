@@ -1,7 +1,8 @@
 use askama::Template;
 use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 
-use crate::domain::{CoreStats, CountedItem, Hit, Service, Session};
+use crate::domain::{CoreStats, CountedItem, Hit, Service, Session, TrackerType};
 
 #[derive(Template)]
 #[template(path = "dashboard/index.html")]
@@ -55,12 +56,86 @@ pub struct SessionListTemplate {
     pub url_pattern: String,
 }
 
+/// A Hit with pre-formatted timestamps for display in templates
+pub struct HitDisplay {
+    pub location: String,
+    pub referrer: String,
+    pub tracker: TrackerType,
+    pub load_time: Option<f64>,
+    pub heartbeats: i32,
+    pub initial: bool,
+    /// Formatted start time in user's timezone
+    pub start_time: String,
+    /// Formatted last seen time in user's timezone
+    pub last_seen: String,
+}
+
+impl HitDisplay {
+    pub fn from_hit(hit: Hit, tz: Tz) -> Self {
+        let start_local = hit.start_time.with_timezone(&tz);
+        let last_seen_local = hit.last_seen.with_timezone(&tz);
+
+        Self {
+            location: hit.location,
+            referrer: hit.referrer,
+            tracker: hit.tracker,
+            load_time: hit.load_time,
+            heartbeats: hit.heartbeats,
+            initial: hit.initial,
+            start_time: start_local.format("%m/%d %H:%M:%S").to_string(),
+            last_seen: last_seen_local.format("%m/%d %H:%M:%S").to_string(),
+        }
+    }
+}
+
 #[derive(Template)]
 #[template(path = "dashboard/session_detail.html")]
 pub struct SessionDetailTemplate {
     pub service: Service,
-    pub session: Session,
-    pub hits: Vec<Hit>,
+    pub session: SessionDisplay,
+    pub hits: Vec<HitDisplay>,
+}
+
+/// A Session with pre-formatted timestamps for display in templates
+pub struct SessionDisplay {
+    pub id: String,
+    pub identifier: String,
+    pub start_time: String,
+    pub last_seen: String,
+    pub user_agent: String,
+    pub browser: String,
+    pub device: String,
+    pub device_type: String,
+    pub os: String,
+    pub ip: Option<String>,
+    pub asn: String,
+    pub country: String,
+    pub time_zone: String,
+    pub is_bounce: bool,
+}
+
+impl SessionDisplay {
+    pub fn from_session(session: Session, tz: Tz) -> Self {
+        let start_local = session.start_time.with_timezone(&tz);
+        let last_seen_local = session.last_seen.with_timezone(&tz);
+
+        Self {
+            id: session.id.0.to_string(),
+            identifier: session.identifier,
+            start_time: start_local.format("%Y-%m-%d %H:%M:%S %Z").to_string(),
+            last_seen: last_seen_local.format("%Y-%m-%d %H:%M:%S %Z").to_string(),
+            user_agent: session.user_agent,
+            browser: session.browser,
+            device: session.device,
+            device_type: session.device_type.to_string(),
+            os: session.os,
+            ip: session.ip,
+            asn: session.asn,
+            country: session.country,
+            time_zone: session.time_zone,
+            is_bounce: session.is_bounce,
+        }
+    }
 }
 
 #[derive(Template)]

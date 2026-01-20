@@ -449,7 +449,7 @@ fn generate_tracker_script(
     if dnt {
         return TrackerScriptDntTemplate
             .render()
-            .unwrap_or_else(|_| "var Shymini = { dnt: true };".to_string());
+            .unwrap_or_else(|_| "var shymini = { dnt: true };".to_string());
     }
 
     let template = TrackerScriptTemplate {
@@ -492,14 +492,14 @@ mod tests {
     #[test]
     fn test_generate_tracker_script_dnt() {
         let script = generate_tracker_script(true, "https", "/ingress/uuid/script.js", 5000, "");
-        assert_eq!(script, r#"var Shymini = { dnt: true };"#);
+        assert_eq!(script, r#"var shymini = { dnt: true };"#);
     }
 
     #[test]
     fn test_generate_tracker_script_normal() {
         let script = generate_tracker_script(false, "https", "/ingress/uuid/script.js", 5000, "");
 
-        assert!(script.contains("var Shymini = (function()"));
+        assert!(script.contains("var shymini = (function()"));
         assert!(script.contains("dnt: false"));
         assert!(script.contains("sendHeartbeat"));
         assert!(script.contains("newPageLoad"));
@@ -527,7 +527,7 @@ mod tests {
         );
 
         assert!(script.contains("console.log('custom code');"));
-        assert!(script.contains("// The following script is not part of Shymini"));
+        assert!(script.contains("// The following script is not part of shymini"));
         assert!(script.contains("// -- START --"));
         assert!(script.contains("// -- END --"));
     }
@@ -596,7 +596,7 @@ mod tests {
         let script = generate_tracker_script(false, "https", "/test", 5000, "");
 
         // Script should send idempotency, referrer, location, loadTime
-        assert!(script.contains("idempotency: Shymini.idempotency"));
+        assert!(script.contains("idempotency: shymini.idempotency"));
         assert!(script.contains("referrer: document.referrer"));
         assert!(script.contains("location: window.location.href"));
         assert!(script.contains("loadTime:"));

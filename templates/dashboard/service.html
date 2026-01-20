@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ service.name }} - Shymini{% endblock %}
+{% block title %}{{ service.name }} - shymini{% endblock %}
 
 {% block content %}
 <div class="mb-6 flex justify-between items-center">
@@ -103,6 +103,10 @@
         hits: [{% for h in stats.chart_data.hits %}{{ h }}{% if !loop.last %},{% endif %}{% endfor %}]
     };
 
+    if (!chartData.labels || chartData.labels.length === 0) {
+        console.warn('No chart labels returned for date range. Check that dates are valid and data exists.');
+    }
+
     if (chartData.labels && chartData.labels.length > 0) {
         var options = {
             series: [
@@ -120,6 +124,13 @@
             fill: {
                 type: 'gradient',
                 gradient: { opacityFrom: 0.4, opacityTo: 0.1 }
+            },
+            tooltip: {
+                x: {
+                    formatter: function(value, { dataPointIndex }) {
+                        return chartData.labels[dataPointIndex];
+                    }
+                }
             },
             xaxis: {
                 categories: chartData.labels,
@@ -339,6 +350,111 @@
 
 {% block extra_body %}
 <script>
+// Synchronize date inputs with URL parameters
+function syncDatesToUrl() {
+    const startInput = document.getElementById('startDate');
+    const endInput = document.getElementById('endDate');
+    const urlPatternInput = document.getElementById('urlPattern');
+
+    const params = new URLSearchParams(window.location.search);
+
+    // Update URL with current input values
+    if (startInput && startInput.value) {
+        params.set('startDate', startInput.value);
+    } else {
+        params.delete('startDate');
+    }
+
+    if (endInput && endInput.value) {
+        params.set('endDate', endInput.value);
+    } else {
+        params.delete('endDate');
+    }
+
+    if (urlPatternInput && urlPatternInput.value) {
+        params.set('urlPattern', urlPatternInput.value);
+    } else {
+        params.delete('urlPattern');
+    }
+
+    const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+    history.replaceState(null, '', newUrl);
+}
+
+// Convert a date param to datetime-local format (YYYY-MM-DDTHH:MM)
+function toDatetimeLocal(param) {
+    // If already in datetime-local format (YYYY-MM-DDTHH:MM), use directly
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(param)) {
+        return param;
+    }
+    // Full ISO with timezone (e.g., 2026-01-19T11:22:00.000Z) - convert to local time
+    const date = new Date(param);
+    if (isNaN(date.getTime())) {
+        return null;
+    }
+    // Format as local YYYY-MM-DDTHH:MM
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+// Read URL params and populate inputs on page load
+function loadDatesFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const startInput = document.getElementById('startDate');
+    const endInput = document.getElementById('endDate');
+    const urlPatternInput = document.getElementById('urlPattern');
+
+    // Only override if URL has the param (server-rendered values are the fallback)
+    const startParam = params.get('startDate');
+    const endParam = params.get('endDate');
+    const urlPatternParam = params.get('urlPattern');
+
+    if (startParam && startInput) {
+        const localValue = toDatetimeLocal(startParam);
+        if (localValue) {
+            startInput.value = localValue;
+        }
+    }
+
+    if (endParam && endInput) {
+        const localValue = toDatetimeLocal(endParam);
+        if (localValue) {
+            endInput.value = localValue;
+        }
+    }
+
+    if (urlPatternParam !== null && urlPatternInput) {
+        urlPatternInput.value = urlPatternParam;
+    }
+}
+
+// Intercept HTMX requests to properly encode date parameters and sync URL
+document.body.addEventListener('htmx:configRequest', function(evt) {
+    const params = evt.detail.parameters;
+
+    // Convert datetime-local values to proper ISO 8601 format
+    if (params.startDate) {
+        // datetime-local gives us YYYY-MM-DDTHH:MM, convert to full ISO 8601
+        const startDate = new Date(params.startDate);
+        if (!isNaN(startDate.getTime())) {
+            params.startDate = startDate.toISOString();
+        }
+    }
+    if (params.endDate) {
+        const endDate = new Date(params.endDate);
+        if (!isNaN(endDate.getTime())) {
+            params.endDate = endDate.toISOString();
+        }
+    }
+
+    // Sync to URL after HTMX processes the request
+    setTimeout(syncDatesToUrl, 0);
+});
+
 function validateDateRange() {
     const startInput = document.getElementById('startDate');
     const endInput = document.getElementById('endDate');
@@ -359,7 +475,13 @@ function validateDateRange() {
         }
     }
 }
-// Run validation on page load
-document.addEventListener('DOMContentLoaded', validateDateRange);
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadDatesFromUrl();
+    validateDateRange();
+    // Sync initial state to URL (in case server-rendered values differ)
+    syncDatesToUrl();
+});
 </script>
 {% endblock %}

@@ -225,8 +225,8 @@ async fn test_tracker_script_served_for_valid_service() {
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let body_str = String::from_utf8_lossy(&body);
     assert!(
-        body_str.contains("Shymini"),
-        "Script should contain 'Shymini'"
+        body_str.contains("shymini"),
+        "Script should contain 'shymini'"
     );
     assert!(
         body_str.contains("sendHeartbeat"),

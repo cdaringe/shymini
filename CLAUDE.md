@@ -214,9 +214,9 @@ cd workspace/proxy && deno task proxy
 **Routing (all on port 3000):**
 | URL | Upstream |
 |-----|----------|
-| http://shymini.localhost:3000 | Shymini backend (:8080) |
+| http://shymini.localhost:3000 | shymini backend (:8080) |
 | http://fe.localhost:3000 | Test frontend (:3333) |
-| http://localhost:3000 | Shymini backend (default) |
+| http://localhost:3000 | shymini backend (default) |
 
 **Proxy endpoints:**
 - `/__proxy/status` - Status page with routing info
@@ -227,7 +227,7 @@ cd workspace/proxy && deno task proxy
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PROXY_PORT` | `3000` | Proxy listen port |
-| `BACKEND_URL` | `http://127.0.0.1:8080` | Shymini backend URL |
+| `BACKEND_URL` | `http://127.0.0.1:8080` | shymini backend URL |
 | `FRONTEND_URL` | `http://127.0.0.1:3333` | Frontend server URL |
 | `VERBOSE` | `false` | Enable verbose logging |
 
@@ -318,7 +318,7 @@ cd workspace/frontend && SERVICE_ID=your-uuid deno task fe
 cd workspace/proxy && deno task proxy
 
 # Then visit:
-#   http://shymini.localhost:3000  - Shymini dashboard
+#   http://shymini.localhost:3000  - shymini dashboard
 #   http://fe.localhost:3000      - Test frontend (with tracking)
 ```
 

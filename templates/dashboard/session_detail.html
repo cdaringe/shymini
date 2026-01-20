@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Session - {{ service.name }} - Shymini{% endblock %}
+{% block title %}Session - {{ service.name }} - shymini{% endblock %}
 
 {% block content %}
 <div class="mb-6">
@@ -107,6 +107,8 @@
         <table class="w-full">
             <thead class="text-xs text-gray-500 uppercase border-b">
                 <tr>
+                    <th class="text-left py-2">Started</th>
+                    <th class="text-left py-2">Last Seen</th>
                     <th class="text-left py-2">Page</th>
                     <th class="text-left py-2">Referrer</th>
                     <th class="text-left py-2">Tracker</th>
@@ -117,6 +119,8 @@
             <tbody class="text-sm">
                 {% for hit in hits %}
                 <tr class="border-t">
+                    <td class="py-2 text-gray-600 whitespace-nowrap">{{ hit.start_time }}</td>
+                    <td class="py-2 text-gray-600 whitespace-nowrap">{{ hit.last_seen }}</td>
                     <td class="py-2 truncate max-w-xs">
                         {% if hit.location.is_empty() %}Unknown{% else %}{{ hit.location }}{% endif %}
                         {% if hit.initial %}

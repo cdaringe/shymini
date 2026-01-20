@@ -936,7 +936,7 @@ async fn main() {
     match command.as_str() {
         "seed" => {
             println!("{}", "=".repeat(60));
-            println!("Shymini Load Test - Data Seeder");
+            println!("shymini Load Test - Data Seeder");
             println!("{}", "=".repeat(60));
             println!("Database: {}", db_path.display());
             println!("Services: {}", num_services);

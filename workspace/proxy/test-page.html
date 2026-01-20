@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shymini Tracking Test Page</title>
+  <title>shymini Tracking Test Page</title>
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -76,12 +76,12 @@
   </style>
 </head>
 <body>
-  <h1>Shymini Tracking Test Page</h1>
+  <h1>shymini Tracking Test Page</h1>
 
   <div class="card">
     <h2>1. Configure Service</h2>
     <label for="serviceId">Service UUID:</label>
-    <input type="text" id="serviceId" placeholder="Enter your service UUID from Shymini dashboard">
+    <input type="text" id="serviceId" placeholder="Enter your service UUID from shymini dashboard">
     <p style="color: #6b7280; font-size: 13px; margin-top: 5px;">
       Get this from the tracker code snippet on your service detail page.
     </p>
@@ -184,10 +184,10 @@
         showStatus('trackerStatus', 'Tracker loaded successfully!', 'success');
         log(`Tracker loaded from ${scriptUrl}`, 'success');
 
-        // Check if Shymini object is available
+        // Check if shymini object is available
         setTimeout(() => {
-          if (window.Shymini) {
-            log(`Shymini object available. DNT: ${window.Shymini.dnt}`, 'info');
+          if (window.shymini) {
+            log(`shymini object available. DNT: ${window.shymini.dnt}`, 'info');
           }
         }, 100);
       };
@@ -207,19 +207,19 @@
       trackerScript = null;
       trackerLoaded = false;
 
-      // Clear Shymini heartbeat
-      if (window.Shymini && window.Shymini.heartbeatTaskId) {
-        clearInterval(window.Shymini.heartbeatTaskId);
+      // Clear shymini heartbeat
+      if (window.shymini && window.shymini.heartbeatTaskId) {
+        clearInterval(window.shymini.heartbeatTaskId);
       }
-      window.Shymini = undefined;
+      window.shymini = undefined;
 
       showStatus('trackerStatus', 'Tracker unloaded', 'info');
       log('Tracker unloaded');
     }
 
     function simulatePageView(path) {
-      if (!window.Shymini) {
-        log('Shymini not loaded. Load tracker first.', 'error');
+      if (!window.shymini) {
+        log('shymini not loaded. Load tracker first.', 'error');
         return;
       }
 
@@ -228,8 +228,8 @@
       log(`Simulated navigation to ${path}`);
 
       // Trigger new page load tracking
-      window.Shymini.newPageLoad();
-      log('Triggered Shymini.newPageLoad()', 'success');
+      window.shymini.newPageLoad();
+      log('Triggered shymini.newPageLoad()', 'success');
     }
 
     async function testPixelTracker() {

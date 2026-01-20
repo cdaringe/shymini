@@ -1,4 +1,5 @@
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, TimeZone, Timelike, Utc};
+use chrono_tz::Tz;
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -22,7 +23,13 @@ pub type PoolOptions = sqlx::sqlite::SqlitePoolOptions;
 const RESULTS_LIMIT: i64 = 300;
 
 pub async fn create_pool(url: &str) -> Result<Pool> {
-    let pool = PoolOptions::new().max_connections(10).connect(url).await?;
+    // Limit connections to 1 for in-memory SQLite to ensure all operations
+    // share the same database state (in-memory DBs are per-connection)
+    let max_conns = if url.contains(":memory:") { 1 } else { 10 };
+    let pool = PoolOptions::new()
+        .max_connections(max_conns)
+        .connect(url)
+        .await?;
     Ok(pool)
 }
 
@@ -790,6 +797,7 @@ pub async fn list_hits_for_session(
 }
 
 // Stats queries
+#[allow(clippy::too_many_arguments)]
 pub async fn get_core_stats(
     pool: &Pool,
     service_id: ServiceId,
@@ -798,6 +806,7 @@ pub async fn get_core_stats(
     hide_referrer_regex: Option<&Regex>,
     url_pattern: Option<&Regex>,
     active_user_timeout_ms: u64,
+    tz: Tz,
 ) -> Result<CoreStats> {
     let main_stats = get_relative_stats(
         pool,
@@ -807,6 +816,7 @@ pub async fn get_core_stats(
         hide_referrer_regex,
         url_pattern,
         active_user_timeout_ms,
+        tz,
     )
     .await?;
 
@@ -820,6 +830,7 @@ pub async fn get_core_stats(
         hide_referrer_regex,
         url_pattern,
         active_user_timeout_ms,
+        tz,
     )
     .await?;
 
@@ -829,6 +840,7 @@ pub async fn get_core_stats(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn get_relative_stats(
     pool: &Pool,
     service_id: ServiceId,
@@ -837,6 +849,7 @@ async fn get_relative_stats(
     hide_referrer_regex: Option<&Regex>,
     url_pattern: Option<&Regex>,
     active_user_timeout_ms: u64,
+    tz: Tz,
 ) -> Result<CoreStats> {
     // If URL pattern is provided, use filtered stats
     if let Some(pattern) = url_pattern {
@@ -848,6 +861,7 @@ async fn get_relative_stats(
             hide_referrer_regex,
             pattern,
             active_user_timeout_ms,
+            tz,
         )
         .await;
     }
@@ -1141,7 +1155,7 @@ async fn get_relative_stats(
 
     // Chart data
     let (chart_data, chart_tooltip_format, chart_granularity) =
-        get_chart_data(pool, service_id, start, end, now).await?;
+        get_chart_data(pool, service_id, start, end, now, tz).await?;
 
     Ok(CoreStats {
         currently_online,
@@ -1166,7 +1180,7 @@ async fn get_relative_stats(
     })
 }
 
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 async fn get_relative_stats_with_url_filter(
     pool: &Pool,
     service_id: ServiceId,
@@ -1175,6 +1189,7 @@ async fn get_relative_stats_with_url_filter(
     hide_referrer_regex: Option<&Regex>,
     url_pattern: &Regex,
     active_user_timeout_ms: u64,
+    tz: Tz,
 ) -> Result<CoreStats> {
     let now = Utc::now();
     let active_cutoff = now - Duration::milliseconds(active_user_timeout_ms as i64);
@@ -1442,7 +1457,7 @@ async fn get_relative_stats_with_url_filter(
         .collect();
 
     let (chart_data, chart_tooltip_format, chart_granularity) =
-        get_chart_data_filtered_sync(start, end, now, &hit_times, session_count);
+        get_chart_data_filtered_sync(start, end, now, &hit_times, session_count, tz);
 
     Ok(CoreStats {
         currently_online,
@@ -1561,14 +1576,15 @@ async fn get_chart_data(
     start: DateTime<Utc>,
     end: DateTime<Utc>,
     now: DateTime<Utc>,
+    tz: Tz,
 ) -> Result<(ChartData, String, String)> {
     let duration = end - start;
     let use_hourly = duration.num_days() < 3;
 
     if use_hourly {
-        get_hourly_chart_data(pool, service_id, start, end, now).await
+        get_hourly_chart_data(pool, service_id, start, end, now, tz).await
     } else {
-        get_daily_chart_data(pool, service_id, start, end, now).await
+        get_daily_chart_data(pool, service_id, start, end, now, tz).await
     }
 }
 
@@ -1578,7 +1594,9 @@ async fn get_hourly_chart_data(
     start: DateTime<Utc>,
     end: DateTime<Utc>,
     now: DateTime<Utc>,
+    tz: Tz,
 ) -> Result<(ChartData, String, String)> {
+    // Use a sortable UTC key for internal tracking, convert to user TZ for display
     let mut data: HashMap<String, (i64, i64)> = HashMap::new();
 
     // Sessions per hour
@@ -1596,7 +1614,8 @@ async fn get_hourly_chart_data(
         .await?;
 
         for (hour, count) in rows {
-            let key = hour.format("%Y-%m-%d %H:00").to_string();
+            // Use RFC 3339 / ISO 8601 format for keys
+            let key = hour.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
             data.entry(key).or_insert((0, 0)).0 = count;
         }
 
@@ -1613,15 +1632,16 @@ async fn get_hourly_chart_data(
         .await?;
 
         for (hour, count) in rows {
-            let key = hour.format("%Y-%m-%d %H:00").to_string();
+            let key = hour.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
             data.entry(key).or_insert((0, 0)).1 = count;
         }
     }
 
     #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
     {
-        let rows: Vec<(String, i64)> = sqlx::query_as(
-            "SELECT strftime('%Y-%m-%d %H:00', start_time) as hour, COUNT(*) as count
+        // Use ISO 8601 format for hour keys: 2026-01-19T11:00:00Z
+        let rows: Vec<(String, i32)> = sqlx::query_as(
+            "SELECT strftime('%Y-%m-%dT%H:00:00Z', start_time) as hour, COUNT(*) as count
              FROM sessions WHERE service_id = ? AND start_time >= ? AND start_time < ?
              GROUP BY hour ORDER BY hour",
         )
@@ -1632,11 +1652,11 @@ async fn get_hourly_chart_data(
         .await?;
 
         for (hour, count) in rows {
-            data.entry(hour).or_insert((0, 0)).0 = count;
+            data.entry(hour).or_insert((0, 0)).0 = count as i64;
         }
 
-        let rows: Vec<(String, i64)> = sqlx::query_as(
-            "SELECT strftime('%Y-%m-%d %H:00', start_time) as hour, COUNT(*) as count
+        let rows: Vec<(String, i32)> = sqlx::query_as(
+            "SELECT strftime('%Y-%m-%dT%H:00:00Z', start_time) as hour, COUNT(*) as count
              FROM hits WHERE service_id = ? AND start_time >= ? AND start_time < ?
              GROUP BY hour ORDER BY hour",
         )
@@ -1647,16 +1667,23 @@ async fn get_hourly_chart_data(
         .await?;
 
         for (hour, count) in rows {
-            data.entry(hour).or_insert((0, 0)).1 = count;
+            data.entry(hour).or_insert((0, 0)).1 = count as i64;
         }
     }
 
-    // Fill in missing hours
-    let hours = ((end - start).num_hours() + 1) as usize;
-    for i in 0..hours {
-        let hour = start + Duration::hours(i as i64);
-        if hour <= now {
-            let key = hour.format("%Y-%m-%d %H:00").to_string();
+    // Fill in missing hours - ensure at least 1 hour even for same start/end
+    // Truncate to hour boundary and format as ISO 8601
+    let start_hour = start
+        .with_minute(0)
+        .and_then(|d| d.with_second(0))
+        .and_then(|d| d.with_nanosecond(0))
+        .unwrap_or(start);
+    let hours = end.signed_duration_since(start_hour).num_hours().max(0) + 1;
+    for i in 0..hours as usize {
+        let hour = start_hour + Duration::hours(i as i64);
+        if hour <= end || hour <= now {
+            // Use RFC 3339 format for consistent ISO 8601 keys
+            let key = hour.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
             data.entry(key).or_insert((0, 0));
         }
     }
@@ -1664,13 +1691,33 @@ async fn get_hourly_chart_data(
     let mut sorted: Vec<_> = data.into_iter().collect();
     sorted.sort_by(|a, b| a.0.cmp(&b.0));
 
+    // Convert UTC keys to user's timezone for display labels
+    // INVARIANT: Every data point MUST have a corresponding label
+    let entries: Vec<(String, i64, i64)> = sorted
+        .into_iter()
+        .filter_map(|(utc_key, (sessions, hits))| {
+            // Parse ISO 8601 / RFC 3339 format
+            chrono::DateTime::parse_from_rfc3339(&utc_key)
+                .ok()
+                .map(|dt| {
+                    let local_dt = dt.with_timezone(&tz);
+                    let label = local_dt.format("%b %d, %H:%M").to_string();
+                    (label, sessions, hits)
+                })
+        })
+        .collect();
+
     let chart_data = ChartData {
-        labels: sorted.iter().map(|(k, _)| k.clone()).collect(),
-        sessions: sorted.iter().map(|(_, v)| v.0).collect(),
-        hits: sorted.iter().map(|(_, v)| v.1).collect(),
+        labels: entries.iter().map(|(l, _, _)| l.clone()).collect(),
+        sessions: entries.iter().map(|(_, s, _)| *s).collect(),
+        hits: entries.iter().map(|(_, _, h)| *h).collect(),
     };
 
-    Ok((chart_data, "MM/dd HH:mm".to_string(), "hourly".to_string()))
+    Ok((
+        chart_data,
+        "MMM dd, HH:mm".to_string(),
+        "hourly".to_string(),
+    ))
 }
 
 async fn get_daily_chart_data(
@@ -1679,6 +1726,7 @@ async fn get_daily_chart_data(
     start: DateTime<Utc>,
     end: DateTime<Utc>,
     now: DateTime<Utc>,
+    tz: Tz,
 ) -> Result<(ChartData, String, String)> {
     let mut data: HashMap<String, (i64, i64)> = HashMap::new();
 
@@ -1750,11 +1798,12 @@ async fn get_daily_chart_data(
         }
     }
 
-    // Fill in missing days
-    let days = (end - start).num_days() + 1;
+    // Fill in missing days - ensure at least 1 day even for same start/end
+    let days = (end - start).num_days().max(0) + 1;
     for i in 0..days {
         let day = (start + Duration::days(i)).date_naive();
-        if day <= now.date_naive() {
+        // Include days up to 'end' or 'now', whichever is later (to show current data)
+        if day <= end.date_naive() || day <= now.date_naive() {
             let key = day.format("%Y-%m-%d").to_string();
             data.entry(key).or_insert((0, 0));
         }
@@ -1763,10 +1812,30 @@ async fn get_daily_chart_data(
     let mut sorted: Vec<_> = data.into_iter().collect();
     sorted.sort_by(|a, b| a.0.cmp(&b.0));
 
+    // Convert UTC date keys to user's timezone for display labels
+    // INVARIANT: Every data point MUST have a corresponding label
+    let entries: Vec<(String, i64, i64)> = sorted
+        .into_iter()
+        .filter_map(|(utc_key, (sessions, hits))| {
+            // Parse the UTC date key
+            chrono::NaiveDate::parse_from_str(&utc_key, "%Y-%m-%d")
+                .ok()
+                .map(|naive_date| {
+                    // Convert to user's timezone (using noon UTC as reference point)
+                    let utc_dt = naive_date.and_hms_opt(12, 0, 0).unwrap();
+                    let utc_dt = Utc.from_utc_datetime(&utc_dt);
+                    let local_dt = utc_dt.with_timezone(&tz);
+                    // Format as readable date
+                    let label = local_dt.format("%b %d").to_string();
+                    (label, sessions, hits)
+                })
+        })
+        .collect();
+
     let chart_data = ChartData {
-        labels: sorted.iter().map(|(k, _)| k.clone()).collect(),
-        sessions: sorted.iter().map(|(_, v)| v.0).collect(),
-        hits: sorted.iter().map(|(_, v)| v.1).collect(),
+        labels: entries.iter().map(|(l, _, _)| l.clone()).collect(),
+        sessions: entries.iter().map(|(_, s, _)| *s).collect(),
+        hits: entries.iter().map(|(_, _, h)| *h).collect(),
     };
 
     Ok((chart_data, "MMM d".to_string(), "daily".to_string()))
@@ -1778,6 +1847,7 @@ fn get_chart_data_filtered_sync(
     now: DateTime<Utc>,
     hit_times: &[DateTime<Utc>],
     session_count: i64,
+    tz: Tz,
 ) -> (ChartData, String, String) {
     let duration = end - start;
     let use_hourly = duration.num_days() < 3;
@@ -1785,9 +1855,15 @@ fn get_chart_data_filtered_sync(
     let mut data: HashMap<String, (i64, i64)> = HashMap::new();
 
     if use_hourly {
-        // Count hits per hour
+        // Count hits per hour using ISO 8601 / RFC 3339 format
         for hit_time in hit_times {
-            let key = hit_time.format("%Y-%m-%d %H:00").to_string();
+            // Truncate to hour boundary
+            let truncated = hit_time
+                .with_minute(0)
+                .and_then(|d| d.with_second(0))
+                .and_then(|d| d.with_nanosecond(0))
+                .unwrap_or(*hit_time);
+            let key = truncated.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
             data.entry(key).or_insert((0, 0)).1 += 1;
         }
 
@@ -1797,12 +1873,17 @@ fn get_chart_data_filtered_sync(
             data.entry(key).or_insert((0, 0)).0 = session_count / hours_with_data;
         }
 
-        // Fill in missing hours
-        let hours = ((end - start).num_hours() + 1) as usize;
-        for i in 0..hours {
-            let hour = start + Duration::hours(i as i64);
-            if hour <= now {
-                let key = hour.format("%Y-%m-%d %H:00").to_string();
+        // Fill in missing hours - ensure at least 1 hour even for same start/end
+        let start_hour = start
+            .with_minute(0)
+            .and_then(|d| d.with_second(0))
+            .and_then(|d| d.with_nanosecond(0))
+            .unwrap_or(start);
+        let hours = end.signed_duration_since(start_hour).num_hours().max(0) + 1;
+        for i in 0..hours as usize {
+            let hour = start_hour + Duration::hours(i as i64);
+            if hour <= end || hour <= now {
+                let key = hour.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
                 data.entry(key).or_insert((0, 0));
             }
         }
@@ -1810,13 +1891,32 @@ fn get_chart_data_filtered_sync(
         let mut sorted: Vec<_> = data.into_iter().collect();
         sorted.sort_by(|a, b| a.0.cmp(&b.0));
 
+        // Convert UTC keys to user's timezone for display labels
+        // INVARIANT: Every data point MUST have a corresponding label
+        let entries: Vec<(String, i64, i64)> = sorted
+            .into_iter()
+            .filter_map(|(utc_key, (sessions, hits))| {
+                chrono::DateTime::parse_from_rfc3339(&utc_key)
+                    .ok()
+                    .map(|dt| {
+                        let local_dt = dt.with_timezone(&tz);
+                        let label = local_dt.format("%b %d, %H:%M").to_string();
+                        (label, sessions, hits)
+                    })
+            })
+            .collect();
+
         let chart_data = ChartData {
-            labels: sorted.iter().map(|(k, _)| k.clone()).collect(),
-            sessions: sorted.iter().map(|(_, v)| v.0).collect(),
-            hits: sorted.iter().map(|(_, v)| v.1).collect(),
+            labels: entries.iter().map(|(l, _, _)| l.clone()).collect(),
+            sessions: entries.iter().map(|(_, s, _)| *s).collect(),
+            hits: entries.iter().map(|(_, _, h)| *h).collect(),
         };
 
-        (chart_data, "MM/dd HH:mm".to_string(), "hourly".to_string())
+        (
+            chart_data,
+            "MMM dd, HH:mm".to_string(),
+            "hourly".to_string(),
+        )
     } else {
         // Count hits per day
         for hit_time in hit_times {
@@ -1830,11 +1930,12 @@ fn get_chart_data_filtered_sync(
             data.entry(key).or_insert((0, 0)).0 = session_count / days_with_data;
         }
 
-        // Fill in missing days
-        let days = (end - start).num_days() + 1;
+        // Fill in missing days - ensure at least 1 day even for same start/end
+        let days = (end - start).num_days().max(0) + 1;
         for i in 0..days {
             let day = (start + Duration::days(i)).date_naive();
-            if day <= now.date_naive() {
+            // Include days up to 'end' or 'now', whichever is later
+            if day <= end.date_naive() || day <= now.date_naive() {
                 let key = day.format("%Y-%m-%d").to_string();
                 data.entry(key).or_insert((0, 0));
             }
@@ -1843,10 +1944,27 @@ fn get_chart_data_filtered_sync(
         let mut sorted: Vec<_> = data.into_iter().collect();
         sorted.sort_by(|a, b| a.0.cmp(&b.0));
 
+        // Convert UTC date keys to user's timezone for display labels
+        // INVARIANT: Every data point MUST have a corresponding label
+        let entries: Vec<(String, i64, i64)> = sorted
+            .into_iter()
+            .filter_map(|(utc_key, (sessions, hits))| {
+                chrono::NaiveDate::parse_from_str(&utc_key, "%Y-%m-%d")
+                    .ok()
+                    .map(|naive_date| {
+                        let utc_dt = naive_date.and_hms_opt(12, 0, 0).unwrap();
+                        let utc_dt = Utc.from_utc_datetime(&utc_dt);
+                        let local_dt = utc_dt.with_timezone(&tz);
+                        let label = local_dt.format("%b %d").to_string();
+                        (label, sessions, hits)
+                    })
+            })
+            .collect();
+
         let chart_data = ChartData {
-            labels: sorted.iter().map(|(k, _)| k.clone()).collect(),
-            sessions: sorted.iter().map(|(_, v)| v.0).collect(),
-            hits: sorted.iter().map(|(_, v)| v.1).collect(),
+            labels: entries.iter().map(|(l, _, _)| l.clone()).collect(),
+            sessions: entries.iter().map(|(_, s, _)| *s).collect(),
+            hits: entries.iter().map(|(_, _, h)| *h).collect(),
         };
 
         (chart_data, "MMM d".to_string(), "daily".to_string())

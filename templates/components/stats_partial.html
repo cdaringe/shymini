@@ -45,6 +45,10 @@
         hits: [{% for h in stats.chart_data.hits %}{{ h }}{% if !loop.last %},{% endif %}{% endfor %}]
     };
 
+    if (!chartData.labels || chartData.labels.length === 0) {
+        console.warn('No chart labels returned for date range. Check that dates are valid and data exists.');
+    }
+
     if (chartData.labels && chartData.labels.length > 0) {
         var options = {
             series: [
@@ -62,6 +66,13 @@
             fill: {
                 type: 'gradient',
                 gradient: { opacityFrom: 0.4, opacityTo: 0.1 }
+            },
+            tooltip: {
+                x: {
+                    formatter: function(value, { dataPointIndex }) {
+                        return chartData.labels[dataPointIndex];
+                    }
+                }
             },
             xaxis: {
                 categories: chartData.labels,

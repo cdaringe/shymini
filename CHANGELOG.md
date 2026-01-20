@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/cdaringe/shymini/compare/v1.0.1...v1.0.2) (2026-01-20)
+
+
+### Bug Fixes
+
+* date handling ([9ac92bd](https://github.com/cdaringe/shymini/commit/9ac92bda16c6f2e72a114dcc3cf8e060ec19e0dd))
+
 ## [1.0.1](https://github.com/cdaringe/shymini/compare/v1.0.0...v1.0.1) (2026-01-19)
 
 

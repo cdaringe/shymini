@@ -77,11 +77,11 @@ export async function createServiceWithTrackingId(page: Page, baseURL: string, n
   await page.click('button[type="submit"]');
 
   // Wait for navigation to service detail page
-  await page.waitForURL(/\/service\/[0-9a-f-]+$/);
+  await page.waitForURL(/\/service\/[0-9a-f-]+/);
 
-  // Extract service ID from URL
+  // Extract service ID from URL (may have query params after the ID)
   const url = page.url();
-  const idMatch = url.match(/\/service\/([0-9a-f-]+)$/);
+  const idMatch = url.match(/\/service\/([0-9a-f-]+)/);
   if (!idMatch) {
     throw new Error(`Could not extract service ID from URL: ${url}`);
   }

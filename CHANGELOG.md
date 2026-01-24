@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/cdaringe/shymini/compare/v1.2.0...v1.3.0) (2026-01-24)
+
+
+### Features
+
+* add tooltips ([3027031](https://github.com/cdaringe/shymini/commit/3027031e2094ebcd41f1e8ce4578abd89c037215))
+
 # [1.2.0](https://github.com/cdaringe/shymini/compare/v1.1.0...v1.2.0) (2026-01-24)
 
 

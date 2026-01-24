@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/cdaringe/shymini/compare/v1.0.3...v1.1.0) (2026-01-24)
+
+
+### Features
+
+* improved session history ([2e7f0f1](https://github.com/cdaringe/shymini/commit/2e7f0f1f8e87be691d714295b8a3c9c5633d956a))
+
 ## [1.0.3](https://github.com/cdaringe/shymini/compare/v1.0.2...v1.0.3) (2026-01-24)
 
 

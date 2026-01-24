@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/cdaringe/shymini/compare/v1.0.2...v1.0.3) (2026-01-24)
+
+
+### Bug Fixes
+
+* correct hit counts, improve basic styles ([bc9785a](https://github.com/cdaringe/shymini/commit/bc9785a1a9a7b8dabe57de777a8c5bbcb899ed3f))
+
 ## [1.0.2](https://github.com/cdaringe/shymini/compare/v1.0.1...v1.0.2) (2026-01-20)
 
 

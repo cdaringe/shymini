@@ -2,6 +2,7 @@ use chrono::{DateTime, Duration, TimeZone, Timelike, Utc};
 use chrono_tz::Tz;
 use regex::Regex;
 use std::collections::HashMap;
+use url::Url;
 
 use crate::domain::{
     ChartData, CoreStats, CountedItem, CreateHit, CreateService, CreateSession, DeviceType, Hit,
@@ -21,6 +22,42 @@ pub type Pool = sqlx::SqlitePool;
 pub type PoolOptions = sqlx::sqlite::SqlitePoolOptions;
 
 const RESULTS_LIMIT: i64 = 300;
+
+/// Normalize a location URL by stripping query parameters and fragments.
+/// Returns just the hostname (if present) and pathname.
+fn normalize_location(location: &str) -> String {
+    // Handle relative paths (just pathname)
+    if location.starts_with('/') {
+        return location
+            .split('?')
+            .next()
+            .and_then(|s| s.split('#').next())
+            .unwrap_or(location)
+            .to_string();
+    }
+
+    // Handle full URLs
+    match Url::parse(location) {
+        Ok(url) => {
+            let host = url.host_str().unwrap_or("");
+            let path = url.path();
+            if host.is_empty() {
+                path.to_string()
+            } else {
+                format!("{}{}", host, path)
+            }
+        }
+        Err(_) => {
+            // Fallback: just strip query and fragment manually
+            location
+                .split('?')
+                .next()
+                .and_then(|s| s.split('#').next())
+                .unwrap_or(location)
+                .to_string()
+        }
+    }
+}
 
 pub async fn create_pool(url: &str) -> Result<Pool> {
     // Limit connections to 1 for in-memory SQLite to ensure all operations
@@ -796,6 +833,42 @@ pub async fn list_hits_for_session(
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
+/// Find the most recent hit for a session at a specific location.
+/// Used to deduplicate heartbeats when idempotency cache expires.
+pub async fn find_recent_hit_by_location(
+    pool: &Pool,
+    session_id: SessionId,
+    location: &str,
+) -> Result<Option<Hit>> {
+    #[cfg(feature = "postgres")]
+    let row: Option<HitRow> = sqlx::query_as(
+        r#"SELECT id, session_id, service_id, initial, start_time, last_seen,
+           heartbeats, tracker, location, referrer, load_time
+           FROM hits WHERE session_id = $1 AND location = $2
+           ORDER BY start_time DESC
+           LIMIT 1"#,
+    )
+    .bind(session_id.0)
+    .bind(location)
+    .fetch_optional(pool)
+    .await?;
+
+    #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
+    let row: Option<HitRow> = sqlx::query_as(
+        r#"SELECT id, session_id, service_id, initial, start_time, last_seen,
+           heartbeats, tracker, location, referrer, load_time
+           FROM hits WHERE session_id = ? AND location = ?
+           ORDER BY start_time DESC
+           LIMIT 1"#,
+    )
+    .bind(session_id.0.to_string())
+    .bind(location)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row.map(Into::into))
+}
+
 // Stats queries
 #[allow(clippy::too_many_arguments)]
 pub async fn get_core_stats(
@@ -1065,17 +1138,8 @@ async fn get_relative_stats(
         }
     };
 
-    // Locations (top pages)
-    let locations = get_counted_field(
-        pool,
-        "hits",
-        "location",
-        service_id,
-        start,
-        end,
-        RESULTS_LIMIT,
-    )
-    .await?;
+    // Locations (top pages) - normalized to strip query params
+    let locations = get_counted_locations(pool, service_id, start, end, RESULTS_LIMIT).await?;
 
     // Referrers (filter by regex if provided)
     let mut referrers = get_counted_field_initial(
@@ -1288,10 +1352,11 @@ async fn get_relative_stats_with_url_filter(
         None
     };
 
-    // Count locations from filtered hits
+    // Count locations from filtered hits (normalized to strip query params)
     let mut location_counts: HashMap<String, i64> = HashMap::new();
     for (_, _, location, _, _, _, _) in &filtered_hits {
-        *location_counts.entry(location.clone()).or_insert(0) += 1;
+        let normalized = normalize_location(location);
+        *location_counts.entry(normalized).or_insert(0) += 1;
     }
     let mut locations: Vec<CountedItem> = location_counts
         .into_iter()
@@ -1524,6 +1589,58 @@ async fn get_counted_field(
     };
 
     Ok(rows.into_iter().map(Into::into).collect())
+}
+
+/// Get top pages (locations) with query parameters stripped.
+/// Aggregates by hostname + pathname only.
+async fn get_counted_locations(
+    pool: &Pool,
+    service_id: ServiceId,
+    start: DateTime<Utc>,
+    end: DateTime<Utc>,
+    limit: i64,
+) -> Result<Vec<CountedItem>> {
+    // Fetch all location values with their counts
+    #[cfg(feature = "postgres")]
+    let rows: Vec<CountedRow> = sqlx::query_as(
+        "SELECT location as value, COUNT(*) as count FROM hits
+         WHERE service_id = $1 AND start_time >= $2 AND start_time < $3
+         GROUP BY location",
+    )
+    .bind(service_id.0)
+    .bind(start)
+    .bind(end)
+    .fetch_all(pool)
+    .await?;
+
+    #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
+    let rows: Vec<CountedRow> = sqlx::query_as(
+        "SELECT location as value, COUNT(*) as count FROM hits
+         WHERE service_id = ? AND start_time >= ? AND start_time < ?
+         GROUP BY location",
+    )
+    .bind(service_id.0.to_string())
+    .bind(start.to_rfc3339())
+    .bind(end.to_rfc3339())
+    .fetch_all(pool)
+    .await?;
+
+    // Normalize locations (strip query params) and re-aggregate
+    let mut location_counts: HashMap<String, i64> = HashMap::new();
+    for row in rows {
+        let normalized = normalize_location(&row.value.unwrap_or_default());
+        *location_counts.entry(normalized).or_insert(0) += row.count;
+    }
+
+    // Convert to sorted vector
+    let mut items: Vec<CountedItem> = location_counts
+        .into_iter()
+        .map(|(value, count)| CountedItem { value, count })
+        .collect();
+    items.sort_by(|a, b| b.count.cmp(&a.count));
+    items.truncate(limit as usize);
+
+    Ok(items)
 }
 
 async fn get_counted_field_initial(
@@ -2237,5 +2354,50 @@ impl From<CountedRow> for CountedItem {
             value: row.value.unwrap_or_default(),
             count: row.count,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_location_strips_query_params() {
+        assert_eq!(normalize_location("/path?query=1"), "/path");
+        assert_eq!(normalize_location("/path?a=1&b=2"), "/path");
+    }
+
+    #[test]
+    fn test_normalize_location_strips_fragment() {
+        assert_eq!(normalize_location("/path#section"), "/path");
+        assert_eq!(normalize_location("/path?q=1#section"), "/path");
+    }
+
+    #[test]
+    fn test_normalize_location_preserves_path() {
+        assert_eq!(normalize_location("/"), "/");
+        assert_eq!(normalize_location("/about"), "/about");
+        assert_eq!(normalize_location("/blog/post-1"), "/blog/post-1");
+    }
+
+    #[test]
+    fn test_normalize_location_full_url() {
+        assert_eq!(
+            normalize_location("https://example.com/path?query=1"),
+            "example.com/path"
+        );
+        assert_eq!(
+            normalize_location("https://example.com/path#section"),
+            "example.com/path"
+        );
+        assert_eq!(
+            normalize_location("https://example.com/?fbclid=abc123"),
+            "example.com/"
+        );
+    }
+
+    #[test]
+    fn test_normalize_location_handles_empty() {
+        assert_eq!(normalize_location(""), "");
     }
 }

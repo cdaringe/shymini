@@ -14,6 +14,7 @@ var shymini = (function() {
   idempotency: null,
   heartbeatTaskId: null,
   skipHeartbeat: false,
+  loadTimeSent: false,
   sendHeartbeat: function () {
     if (document.hidden || shymini.skipHeartbeat) {
       return;
@@ -21,22 +22,29 @@ var shymini = (function() {
 
     shymini.skipHeartbeat = true;
 
+    // Only send loadTime on first request to avoid duplicate hits with same loadTime
+    // when server-side idempotency cache expires
+    var payload = {
+      idempotency: shymini.idempotency,
+      referrer: document.referrer,
+      location: window.location.href
+    };
+    if (!shymini.loadTimeSent) {
+      payload.loadTime =
+        window.performance.timing.domContentLoadedEventEnd -
+        window.performance.timing.navigationStart;
+    }
+
     fetch(scriptOrigin + "{{ endpoint }}", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        idempotency: shymini.idempotency,
-        referrer: document.referrer,
-        location: window.location.href,
-        loadTime:
-          window.performance.timing.domContentLoadedEventEnd -
-          window.performance.timing.navigationStart
-      }),
+      body: JSON.stringify(payload),
       keepalive: true
     })
     .then(function() {
+      shymini.loadTimeSent = true;
       shymini.skipHeartbeat = false;
     })
     .catch(function() {
@@ -49,6 +57,7 @@ var shymini = (function() {
     }
     shymini.idempotency = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     shymini.skipHeartbeat = false;
+    shymini.loadTimeSent = false;
     shymini.heartbeatTaskId = setInterval(shymini.sendHeartbeat, {{ heartbeat_frequency }});
     shymini.sendHeartbeat();
   }

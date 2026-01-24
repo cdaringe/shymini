@@ -55,7 +55,7 @@ fn default_cache_ttl() -> u64 {
 }
 
 fn default_session_memory_timeout() -> u64 {
-    1800
+    3600 // 1 hour
 }
 
 impl Settings {
@@ -95,7 +95,7 @@ mod tests {
             script_heartbeat_frequency_ms: 5000,
             cache_max_entries: 1000,
             cache_ttl_secs: 3600,
-            session_memory_timeout_secs: 1800,
+            session_memory_timeout_secs: 3600,
         }
     }
 
@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_default_session_memory_timeout() {
-        assert_eq!(default_session_memory_timeout(), 1800);
+        assert_eq!(default_session_memory_timeout(), 3600);
     }
 
     #[test]

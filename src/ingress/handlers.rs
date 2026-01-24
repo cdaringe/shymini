@@ -595,11 +595,13 @@ mod tests {
     fn test_generate_tracker_script_sends_correct_data() {
         let script = generate_tracker_script(false, "https", "/test", 5000, "");
 
-        // Script should send idempotency, referrer, location, loadTime
+        // Script should send idempotency, referrer, location
         assert!(script.contains("idempotency: shymini.idempotency"));
         assert!(script.contains("referrer: document.referrer"));
         assert!(script.contains("location: window.location.href"));
-        assert!(script.contains("loadTime:"));
+        // loadTime is only sent on first request (when loadTimeSent is false)
+        assert!(script.contains("loadTimeSent"));
+        assert!(script.contains("payload.loadTime"));
     }
 
     #[test]

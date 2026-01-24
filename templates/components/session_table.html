@@ -5,6 +5,7 @@
     <thead class="text-xs text-gray-500 uppercase border-b">
         <tr>
             <th class="text-left py-2">Session</th>
+            <th class="text-left py-2">Started</th>
             <th class="text-left py-2">Browser</th>
             <th class="text-left py-2">OS</th>
             <th class="text-left py-2">Country</th>
@@ -19,6 +20,7 @@
                     {% if session.identifier.is_empty() %}{{ session.id }}{% else %}{{ session.identifier }}{% endif %}
                 </a>
             </td>
+            <td class="py-2 text-gray-600 whitespace-nowrap">{{ session.start_time }}</td>
             <td class="py-2 text-gray-600">{% if session.browser.is_empty() %}Unknown{% else %}{{ session.browser }}{% endif %}</td>
             <td class="py-2 text-gray-600">{% if session.os.is_empty() %}Unknown{% else %}{{ session.os }}{% endif %}</td>
             <td class="py-2 text-gray-600">{% if session.country.is_empty() %}Unknown{% else %}{{ session.country }}{% endif %}</td>

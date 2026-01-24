@@ -375,7 +375,11 @@ pub async fn session_list(
     };
 
     let has_next = sessions.len() > PAGE_SIZE as usize;
-    let sessions: Vec<_> = sessions.into_iter().take(PAGE_SIZE as usize).collect();
+    let sessions: Vec<_> = sessions
+        .into_iter()
+        .take(PAGE_SIZE as usize)
+        .map(|s| SessionDisplay::from_session(s, tz))
+        .collect();
 
     // Format start/end dates in user's timezone for the form inputs
     let start_local = start.with_timezone(&tz);

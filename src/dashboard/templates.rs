@@ -48,7 +48,7 @@ pub struct ServiceDeleteTemplate {
 #[template(path = "dashboard/session_list.html")]
 pub struct SessionListTemplate {
     pub service: Service,
-    pub sessions: Vec<Session>,
+    pub sessions: Vec<SessionDisplay>,
     pub page: i64,
     pub has_next: bool,
     pub start_date: String,

@@ -132,13 +132,14 @@ pub async fn process_ingress(
 
     let hit_id = if let Some(ref key) = idempotency_key {
         if let Some(existing_hit_id) = state.cache.get_hit_idempotency(key).await {
-            // This is a heartbeat for an existing hit
+            // Idempotency key in cache - this is a heartbeat for an existing hit
             debug!("Heartbeat for existing hit {}", existing_hit_id);
             state.cache.touch_hit_idempotency(key).await;
             db::update_hit_heartbeat(&state.pool, existing_hit_id, time).await?;
             existing_hit_id
-        } else {
-            // New hit
+        } else if load_time.is_some() {
+            // Idempotency key not in cache, but has loadTime - genuine new page load
+            debug!("New page load for session {}", session_id);
             create_new_hit(
                 &state.pool,
                 session_id,
@@ -150,9 +151,39 @@ pub async fn process_ingress(
                 load_time,
             )
             .await?
+        } else {
+            // Idempotency key not in cache, no loadTime - stale heartbeat after cache expiry
+            // Try to find and update existing hit for this location
+            debug!(
+                "Stale heartbeat for session {}, looking for existing hit",
+                session_id
+            );
+            match db::find_recent_hit_by_location(&state.pool, session_id, &payload.location).await
+            {
+                Ok(Some(existing_hit)) => {
+                    debug!("Found existing hit {} to update", existing_hit.id);
+                    db::update_hit_heartbeat(&state.pool, existing_hit.id, time).await?;
+                    existing_hit.id
+                }
+                _ => {
+                    // No existing hit found - create new one (shouldn't happen often)
+                    debug!("No existing hit found, creating new one");
+                    create_new_hit(
+                        &state.pool,
+                        session_id,
+                        service.id,
+                        initial,
+                        time,
+                        tracker,
+                        &payload,
+                        load_time,
+                    )
+                    .await?
+                }
+            }
         }
     } else {
-        // No idempotency key, always create new hit
+        // No idempotency key, always create new hit (e.g., pixel tracker)
         create_new_hit(
             &state.pool,
             session_id,

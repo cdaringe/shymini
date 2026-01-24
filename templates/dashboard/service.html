@@ -34,7 +34,7 @@
                    onchange="validateDateRange()">
             <span id="dateError" class="text-red-500 text-xs hidden">Start must be before end</span>
         </div>
-        <a href="/service/{{ service.id }}/manage" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 whitespace-nowrap">
+        <a href="/service/{{ service.id }}/manage" class="border border-gray-300 bg-white text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-400 shadow-sm whitespace-nowrap">
             Manage
         </a>
     </div>
@@ -55,253 +55,8 @@
     </div>
 </div>
 {% else %}
-<div id="stats-container">
-<!-- Stats Cards -->
-<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-    <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Sessions</p>
-        <p class="text-2xl font-bold text-gray-900">{{ stats.session_count }}</p>
-    </div>
-    <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Hits</p>
-        <p class="text-2xl font-bold text-gray-900">{{ stats.hit_count }}</p>
-    </div>
-    <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Load Time</p>
-        <p class="text-2xl font-bold text-gray-900">{% match stats.avg_load_time %}{% when Some with (v) %}{{ v }}ms{% when None %}?{% endmatch %}</p>
-    </div>
-    <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Bounce Rate</p>
-        <p class="text-2xl font-bold text-gray-900">{% match stats.bounce_rate_pct %}{% when Some with (v) %}{{ v }}%{% when None %}?{% endmatch %}</p>
-    </div>
-    <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Duration</p>
-        <p class="text-2xl font-bold text-gray-900">{% match stats.avg_session_duration %}{% when Some with (v) %}{{ v }}s{% when None %}?{% endmatch %}</p>
-    </div>
-    <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Hits/Session</p>
-        <p class="text-2xl font-bold text-gray-900">{% match stats.avg_hits_per_session %}{% when Some with (v) %}{{ v }}{% when None %}?{% endmatch %}</p>
-    </div>
-</div>
-
-<!-- Chart -->
-<div class="bg-white rounded-lg shadow p-4 mb-6">
-    <div id="chart"></div>
-</div>
-
-<script>
-(function() {
-    // Destroy existing chart if present to prevent memory leaks
-    if (window.shyminiChart) {
-        window.shyminiChart.destroy();
-        window.shyminiChart = null;
-    }
-
-    var chartData = {
-        labels: [{% for label in stats.chart_data.labels %}"{{ label }}"{% if !loop.last %},{% endif %}{% endfor %}],
-        sessions: [{% for s in stats.chart_data.sessions %}{{ s }}{% if !loop.last %},{% endif %}{% endfor %}],
-        hits: [{% for h in stats.chart_data.hits %}{{ h }}{% if !loop.last %},{% endif %}{% endfor %}]
-    };
-
-    if (!chartData.labels || chartData.labels.length === 0) {
-        console.warn('No chart labels returned for date range. Check that dates are valid and data exists.');
-    }
-
-    if (chartData.labels && chartData.labels.length > 0) {
-        var options = {
-            series: [
-                { name: 'Sessions', data: chartData.sessions },
-                { name: 'Hits', data: chartData.hits }
-            ],
-            chart: {
-                type: 'area',
-                height: 300,
-                toolbar: { show: false },
-                zoom: { enabled: false }
-            },
-            dataLabels: { enabled: false },
-            stroke: { curve: 'smooth', width: 2 },
-            fill: {
-                type: 'gradient',
-                gradient: { opacityFrom: 0.4, opacityTo: 0.1 }
-            },
-            tooltip: {
-                x: {
-                    formatter: function(value, { dataPointIndex }) {
-                        return chartData.labels[dataPointIndex];
-                    }
-                }
-            },
-            xaxis: {
-                categories: chartData.labels,
-                labels: {
-                    rotate: -45,
-                    rotateAlways: true
-                }
-            },
-            yaxis: { min: 0 },
-            colors: ['#6366f1', '#10b981'],
-            legend: { position: 'top' }
-        };
-
-        window.shyminiChart = new ApexCharts(document.querySelector("#chart"), options);
-        window.shyminiChart.render();
-    }
-})();
-</script>
-</div>
-
-<!-- Locations and Geography Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-    <!-- Locations -->
-    <div class="bg-white rounded-lg shadow">
-        <div class="p-4 border-b">
-            <h3 class="font-semibold text-gray-900">Top Pages</h3>
-        </div>
-        <div class="p-4 limited-height">
-            <table class="w-full">
-                <thead class="text-xs text-gray-500 uppercase">
-                    <tr>
-                        <th class="text-left pb-2">Location</th>
-                        <th class="text-right pb-2">Hits</th>
-                    </tr>
-                </thead>
-                <tbody class="text-sm">
-                    {% for loc in stats.locations %}
-                    <tr class="border-t">
-                        <td class="py-2 truncate max-w-xs">{{ loc.value }}</td>
-                        <td class="py-2 text-right text-gray-600">{{ loc.count }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Countries -->
-    <div class="bg-white rounded-lg shadow">
-        <div class="p-4 border-b">
-            <h3 class="font-semibold text-gray-900">Countries</h3>
-        </div>
-        <div class="p-4 limited-height">
-            <table class="w-full">
-                <thead class="text-xs text-gray-500 uppercase">
-                    <tr>
-                        <th class="text-left pb-2">Country</th>
-                        <th class="text-right pb-2">Sessions</th>
-                    </tr>
-                </thead>
-                <tbody class="text-sm">
-                    {% for country in stats.countries %}
-                    <tr class="border-t">
-                        <td class="py-2">{{ country.value }}</td>
-                        <td class="py-2 text-right text-gray-600">{{ country.count }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Referrers -->
-    <div class="bg-white rounded-lg shadow">
-        <div class="p-4 border-b">
-            <h3 class="font-semibold text-gray-900">Referrers</h3>
-        </div>
-        <div class="p-4 limited-height">
-            <table class="w-full">
-                <thead class="text-xs text-gray-500 uppercase">
-                    <tr>
-                        <th class="text-left pb-2">Source</th>
-                        <th class="text-right pb-2">Sessions</th>
-                    </tr>
-                </thead>
-                <tbody class="text-sm">
-                    {% for ref in stats.referrers %}
-                    <tr class="border-t">
-                        <td class="py-2 truncate max-w-xs">{% if ref.value.is_empty() %}Direct{% else %}{{ ref.value }}{% endif %}</td>
-                        <td class="py-2 text-right text-gray-600">{{ ref.count }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Browsers -->
-    <div class="bg-white rounded-lg shadow">
-        <div class="p-4 border-b">
-            <h3 class="font-semibold text-gray-900">Browsers</h3>
-        </div>
-        <div class="p-4 limited-height">
-            <table class="w-full">
-                <thead class="text-xs text-gray-500 uppercase">
-                    <tr>
-                        <th class="text-left pb-2">Browser</th>
-                        <th class="text-right pb-2">Sessions</th>
-                    </tr>
-                </thead>
-                <tbody class="text-sm">
-                    {% for browser in stats.browsers %}
-                    <tr class="border-t">
-                        <td class="py-2">{% if browser.value.is_empty() %}Unknown{% else %}{{ browser.value }}{% endif %}</td>
-                        <td class="py-2 text-right text-gray-600">{{ browser.count }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Operating Systems -->
-    <div class="bg-white rounded-lg shadow">
-        <div class="p-4 border-b">
-            <h3 class="font-semibold text-gray-900">Operating Systems</h3>
-        </div>
-        <div class="p-4 limited-height">
-            <table class="w-full">
-                <thead class="text-xs text-gray-500 uppercase">
-                    <tr>
-                        <th class="text-left pb-2">OS</th>
-                        <th class="text-right pb-2">Sessions</th>
-                    </tr>
-                </thead>
-                <tbody class="text-sm">
-                    {% for os in stats.operating_systems %}
-                    <tr class="border-t">
-                        <td class="py-2">{% if os.value.is_empty() %}Unknown{% else %}{{ os.value }}{% endif %}</td>
-                        <td class="py-2 text-right text-gray-600">{{ os.count }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Device Types -->
-    <div class="bg-white rounded-lg shadow">
-        <div class="p-4 border-b">
-            <h3 class="font-semibold text-gray-900">Device Types</h3>
-        </div>
-        <div class="p-4 limited-height">
-            <table class="w-full">
-                <thead class="text-xs text-gray-500 uppercase">
-                    <tr>
-                        <th class="text-left pb-2">Type</th>
-                        <th class="text-right pb-2">Sessions</th>
-                    </tr>
-                </thead>
-                <tbody class="text-sm">
-                    {% for dt in stats.device_types %}
-                    <tr class="border-t">
-                        <td class="py-2">{{ dt.value }}</td>
-                        <td class="py-2 text-right text-gray-600">{{ dt.count }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+<div id="stats-container" hx-on:htmx:after-swap="renderChart()">
+{% include "components/stats_content.html" %}
 </div>
 
 <!-- Recent Sessions -->
@@ -309,7 +64,7 @@
     <div class="p-4 border-b flex justify-between items-center">
         <h3 class="font-semibold text-gray-900">Recent Sessions</h3>
         <a href="/service/{{ service.id }}/sessions" class="text-indigo-600 hover:underline text-sm">
-            View all →
+            View all &rarr;
         </a>
     </div>
     <div class="p-4">
@@ -320,6 +75,7 @@
             <thead class="text-xs text-gray-500 uppercase border-b">
                 <tr>
                     <th class="text-left py-2">Session</th>
+                    <th class="text-left py-2">Started</th>
                     <th class="text-left py-2">Browser</th>
                     <th class="text-left py-2">OS</th>
                     <th class="text-left py-2">Country</th>
@@ -334,6 +90,7 @@
                             {% if session.identifier.is_empty() %}{{ session.id }}{% else %}{{ session.identifier }}{% endif %}
                         </a>
                     </td>
+                    <td class="py-2 text-gray-600"><time datetime="{{ session.start_time.to_rfc3339() }}">{{ session.start_time.format("%b %d, %H:%M") }}</time></td>
                     <td class="py-2 text-gray-600">{% if session.browser.is_empty() %}Unknown{% else %}{{ session.browser }}{% endif %}</td>
                     <td class="py-2 text-gray-600">{% if session.os.is_empty() %}Unknown{% else %}{{ session.os }}{% endif %}</td>
                     <td class="py-2 text-gray-600">{% if session.country.is_empty() %}Unknown{% else %}{{ session.country }}{% endif %}</td>
@@ -350,120 +107,142 @@
 
 {% block extra_body %}
 <script>
-// Synchronize date inputs with URL parameters
+// Chart rendering - reads data from #chart element's data attributes
+function renderChart() {
+    var chartEl = document.getElementById('chart');
+    if (!chartEl) return;
+
+    // Destroy existing chart
+    if (window.shyminiChart) {
+        window.shyminiChart.destroy();
+        window.shyminiChart = null;
+    }
+
+    var labels = JSON.parse(chartEl.dataset.labels || '[]');
+    var sessions = JSON.parse(chartEl.dataset.sessions || '[]');
+    var hits = JSON.parse(chartEl.dataset.hits || '[]');
+
+    if (!labels.length) return;
+
+    var options = {
+        series: [
+            { name: 'Sessions', data: sessions },
+            { name: 'Hits', data: hits }
+        ],
+        chart: {
+            type: 'area',
+            height: 300,
+            toolbar: { show: false },
+            zoom: { enabled: false }
+        },
+        dataLabels: { enabled: false },
+        stroke: { curve: 'smooth', width: 2 },
+        fill: {
+            type: 'gradient',
+            gradient: { opacityFrom: 0.4, opacityTo: 0.1 }
+        },
+        tooltip: {
+            x: {
+                formatter: function(value, { dataPointIndex }) {
+                    return labels[dataPointIndex];
+                }
+            }
+        },
+        xaxis: {
+            categories: labels,
+            labels: { rotate: -45, rotateAlways: true }
+        },
+        yaxis: { min: 0 },
+        colors: ['#6366f1', '#10b981'],
+        legend: { position: 'top' }
+    };
+
+    window.shyminiChart = new ApexCharts(chartEl, options);
+    window.shyminiChart.render();
+}
+
 function syncDatesToUrl() {
-    const startInput = document.getElementById('startDate');
-    const endInput = document.getElementById('endDate');
-    const urlPatternInput = document.getElementById('urlPattern');
+    var startInput = document.getElementById('startDate');
+    var endInput = document.getElementById('endDate');
+    var urlPatternInput = document.getElementById('urlPattern');
+    var params = new URLSearchParams(window.location.search);
 
-    const params = new URLSearchParams(window.location.search);
-
-    // Update URL with current input values
     if (startInput && startInput.value) {
         params.set('startDate', startInput.value);
     } else {
         params.delete('startDate');
     }
-
     if (endInput && endInput.value) {
         params.set('endDate', endInput.value);
     } else {
         params.delete('endDate');
     }
-
     if (urlPatternInput && urlPatternInput.value) {
         params.set('urlPattern', urlPatternInput.value);
     } else {
         params.delete('urlPattern');
     }
 
-    const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+    var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
     history.replaceState(null, '', newUrl);
 }
 
-// Convert a date param to datetime-local format (YYYY-MM-DDTHH:MM)
 function toDatetimeLocal(param) {
-    // If already in datetime-local format (YYYY-MM-DDTHH:MM), use directly
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(param)) {
-        return param;
-    }
-    // Full ISO with timezone (e.g., 2026-01-19T11:22:00.000Z) - convert to local time
-    const date = new Date(param);
-    if (isNaN(date.getTime())) {
-        return null;
-    }
-    // Format as local YYYY-MM-DDTHH:MM
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(param)) return param;
+    var date = new Date(param);
+    if (isNaN(date.getTime())) return null;
+    var year = date.getFullYear();
+    var month = String(date.getMonth() + 1).padStart(2, '0');
+    var day = String(date.getDate()).padStart(2, '0');
+    var hours = String(date.getHours()).padStart(2, '0');
+    var minutes = String(date.getMinutes()).padStart(2, '0');
+    return year + '-' + month + '-' + day + 'T' + hours + ':' + minutes;
 }
 
-// Read URL params and populate inputs on page load
 function loadDatesFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    const startInput = document.getElementById('startDate');
-    const endInput = document.getElementById('endDate');
-    const urlPatternInput = document.getElementById('urlPattern');
+    var params = new URLSearchParams(window.location.search);
+    var startInput = document.getElementById('startDate');
+    var endInput = document.getElementById('endDate');
+    var urlPatternInput = document.getElementById('urlPattern');
 
-    // Only override if URL has the param (server-rendered values are the fallback)
-    const startParam = params.get('startDate');
-    const endParam = params.get('endDate');
-    const urlPatternParam = params.get('urlPattern');
+    var startParam = params.get('startDate');
+    var endParam = params.get('endDate');
+    var urlPatternParam = params.get('urlPattern');
 
     if (startParam && startInput) {
-        const localValue = toDatetimeLocal(startParam);
-        if (localValue) {
-            startInput.value = localValue;
-        }
+        var localValue = toDatetimeLocal(startParam);
+        if (localValue) startInput.value = localValue;
     }
-
     if (endParam && endInput) {
-        const localValue = toDatetimeLocal(endParam);
-        if (localValue) {
-            endInput.value = localValue;
-        }
+        var localValue = toDatetimeLocal(endParam);
+        if (localValue) endInput.value = localValue;
     }
-
     if (urlPatternParam !== null && urlPatternInput) {
         urlPatternInput.value = urlPatternParam;
     }
 }
 
-// Intercept HTMX requests to properly encode date parameters and sync URL
 document.body.addEventListener('htmx:configRequest', function(evt) {
-    const params = evt.detail.parameters;
-
-    // Convert datetime-local values to proper ISO 8601 format
+    var params = evt.detail.parameters;
     if (params.startDate) {
-        // datetime-local gives us YYYY-MM-DDTHH:MM, convert to full ISO 8601
-        const startDate = new Date(params.startDate);
-        if (!isNaN(startDate.getTime())) {
-            params.startDate = startDate.toISOString();
-        }
+        var startDate = new Date(params.startDate);
+        if (!isNaN(startDate.getTime())) params.startDate = startDate.toISOString();
     }
     if (params.endDate) {
-        const endDate = new Date(params.endDate);
-        if (!isNaN(endDate.getTime())) {
-            params.endDate = endDate.toISOString();
-        }
+        var endDate = new Date(params.endDate);
+        if (!isNaN(endDate.getTime())) params.endDate = endDate.toISOString();
     }
-
-    // Sync to URL after HTMX processes the request
     setTimeout(syncDatesToUrl, 0);
 });
 
 function validateDateRange() {
-    const startInput = document.getElementById('startDate');
-    const endInput = document.getElementById('endDate');
-    const errorSpan = document.getElementById('dateError');
+    var startInput = document.getElementById('startDate');
+    var endInput = document.getElementById('endDate');
+    var errorSpan = document.getElementById('dateError');
 
     if (startInput.value && endInput.value) {
-        const start = new Date(startInput.value);
-        const end = new Date(endInput.value);
-
+        var start = new Date(startInput.value);
+        var end = new Date(endInput.value);
         if (start >= end) {
             errorSpan.classList.remove('hidden');
             startInput.classList.add('border-red-500');
@@ -476,12 +255,25 @@ function validateDateRange() {
     }
 }
 
-// Initialize on page load
+function formatLocalTimes() {
+    document.querySelectorAll('time[datetime]').forEach(function(el) {
+        var date = new Date(el.getAttribute('datetime'));
+        if (!isNaN(date.getTime())) {
+            var month = date.toLocaleString('en-US', { month: 'short' });
+            var day = date.getDate();
+            var hours = String(date.getHours()).padStart(2, '0');
+            var minutes = String(date.getMinutes()).padStart(2, '0');
+            el.textContent = month + ' ' + day + ', ' + hours + ':' + minutes;
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     loadDatesFromUrl();
     validateDateRange();
-    // Sync initial state to URL (in case server-rendered values differ)
     syncDatesToUrl();
+    renderChart();
+    formatLocalTimes();
 });
 </script>
 {% endblock %}

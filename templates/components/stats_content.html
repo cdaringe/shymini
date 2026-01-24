@@ -1,0 +1,189 @@
+<!-- Stats Cards -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Sessions</p>
+        <p class="text-2xl font-bold text-gray-900">{{ stats.session_count }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Hits</p>
+        <p class="text-2xl font-bold text-gray-900">{{ stats.hit_count }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Load Time</p>
+        <p class="text-2xl font-bold text-gray-900">{% match stats.avg_load_time %}{% when Some with (v) %}{{ v }}ms{% when None %}?{% endmatch %}</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Bounce Rate</p>
+        <p class="text-2xl font-bold text-gray-900">{% match stats.bounce_rate_pct %}{% when Some with (v) %}{{ v }}%{% when None %}?{% endmatch %}</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Duration</p>
+        <p class="text-2xl font-bold text-gray-900">{% match stats.avg_session_duration %}{% when Some with (v) %}{{ v }}s{% when None %}?{% endmatch %}</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs text-gray-500 uppercase">Hits/Session</p>
+        <p class="text-2xl font-bold text-gray-900">{% match stats.avg_hits_per_session %}{% when Some with (v) %}{{ v }}{% when None %}?{% endmatch %}</p>
+    </div>
+</div>
+
+<!-- Chart -->
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+    <div id="chart"
+         data-labels='[{% for label in stats.chart_data.labels %}"{{ label }}"{% if !loop.last %},{% endif %}{% endfor %}]'
+         data-sessions='[{% for s in stats.chart_data.sessions %}{{ s }}{% if !loop.last %},{% endif %}{% endfor %}]'
+         data-hits='[{% for h in stats.chart_data.hits %}{{ h }}{% if !loop.last %},{% endif %}{% endfor %}]'>
+    </div>
+</div>
+
+<!-- Locations and Geography Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <!-- Locations -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Top Pages</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">Location</th>
+                        <th class="text-right pb-2">Hits</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for loc in stats.locations %}
+                    <tr class="border-t">
+                        <td class="py-2 truncate max-w-xs">{{ loc.value }}</td>
+                        <td class="py-2 text-right text-gray-600">{{ loc.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Countries -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Countries</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">Country</th>
+                        <th class="text-right pb-2">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for country in stats.countries %}
+                    <tr class="border-t">
+                        <td class="py-2">{{ country.value }}</td>
+                        <td class="py-2 text-right text-gray-600">{{ country.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Referrers -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Referrers</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">Source</th>
+                        <th class="text-right pb-2">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for ref in stats.referrers %}
+                    <tr class="border-t">
+                        <td class="py-2 truncate max-w-xs">{% if ref.value.is_empty() %}Direct{% else %}{{ ref.value }}{% endif %}</td>
+                        <td class="py-2 text-right text-gray-600">{{ ref.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Browsers -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Browsers</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">Browser</th>
+                        <th class="text-right pb-2">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for browser in stats.browsers %}
+                    <tr class="border-t">
+                        <td class="py-2">{% if browser.value.is_empty() %}Unknown{% else %}{{ browser.value }}{% endif %}</td>
+                        <td class="py-2 text-right text-gray-600">{{ browser.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Operating Systems -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Operating Systems</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">OS</th>
+                        <th class="text-right pb-2">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for os in stats.operating_systems %}
+                    <tr class="border-t">
+                        <td class="py-2">{% if os.value.is_empty() %}Unknown{% else %}{{ os.value }}{% endif %}</td>
+                        <td class="py-2 text-right text-gray-600">{{ os.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Device Types -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Device Types</h3>
+        </div>
+        <div class="p-4 limited-height">
+            <table class="w-full">
+                <thead class="text-xs text-gray-500 uppercase">
+                    <tr>
+                        <th class="text-left pb-2">Type</th>
+                        <th class="text-right pb-2">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for dt in stats.device_types %}
+                    <tr class="border-t">
+                        <td class="py-2">{{ dt.value }}</td>
+                        <td class="py-2 text-right text-gray-600">{{ dt.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

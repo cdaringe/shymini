@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/cdaringe/shymini/compare/v1.1.0...v1.2.0) (2026-01-24)
+
+
+### Features
+
+* new theme ([f8aebee](https://github.com/cdaringe/shymini/commit/f8aebeed68abdc2329bbdb76618c2c06e2e75c40))
+
 # [1.1.0](https://github.com/cdaringe/shymini/compare/v1.0.3...v1.1.0) (2026-01-24)
 
 

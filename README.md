@@ -2,7 +2,7 @@
 
 [![Release](https://github.com/cdaringe/shymini/actions/workflows/release.yml/badge.svg)](https://github.com/cdaringe/shymini/actions/workflows/release.yml) [![Docker Hub](https://img.shields.io/docker/pulls/cdaringe/shymini)](https://hub.docker.com/r/cdaringe/shymini)
 
-<img src="./assets/demo.png" alt="shymini demo screenshot" width="500"/>
+<img src="./assets/demo_theme.png" alt="shymini demo screenshot" width="500"/>
 
 A tiny, self-hosted analytics tool. Handles analytics for sites with 10s of thousands (possibly hundreds of thousands) of daily visitors with ease, while respecting user privacy.
 See our [loadtest](./src/bin/loadtest.rs) for more. Leverages good ol' SQLite _or_ PostgreSQL, which are not usually the analytics tools of choice, but more than adequate for basic analytics stats.

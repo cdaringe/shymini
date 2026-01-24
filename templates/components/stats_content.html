@@ -1,27 +1,39 @@
 <!-- Stats Cards -->
 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
     <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Sessions</p>
+        <p class="text-xs text-gray-500 uppercase">Sessions
+            <span class="tooltip"><span class="info-icon">i</span><span class="tooltip-text">Unique visitors identified by a hash of IP address and browser fingerprint.</span></span>
+        </p>
         <p class="text-2xl font-bold text-gray-900">{{ stats.session_count }}</p>
     </div>
     <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Hits</p>
+        <p class="text-xs text-gray-500 uppercase">Hits
+            <span class="tooltip"><span class="info-icon">i</span><span class="tooltip-text">Total page views across all sessions in the selected time period.</span></span>
+        </p>
         <p class="text-2xl font-bold text-gray-900">{{ stats.hit_count }}</p>
     </div>
     <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Load Time</p>
+        <p class="text-xs text-gray-500 uppercase">Load Time
+            <span class="tooltip"><span class="info-icon">i</span><span class="tooltip-text">Average page load time in milliseconds, measured from navigation start to page load complete.</span></span>
+        </p>
         <p class="text-2xl font-bold text-gray-900">{% match stats.avg_load_time %}{% when Some with (v) %}{{ v }}ms{% when None %}?{% endmatch %}</p>
     </div>
     <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Bounce Rate</p>
+        <p class="text-xs text-gray-500 uppercase">Bounce Rate
+            <span class="tooltip"><span class="info-icon">i</span><span class="tooltip-text">Percentage of sessions where the visitor viewed only one page before leaving.</span></span>
+        </p>
         <p class="text-2xl font-bold text-gray-900">{% match stats.bounce_rate_pct %}{% when Some with (v) %}{{ v }}%{% when None %}?{% endmatch %}</p>
     </div>
     <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Duration</p>
+        <p class="text-xs text-gray-500 uppercase">Duration
+            <span class="tooltip"><span class="info-icon">i</span><span class="tooltip-text">Average time visitors spend on your site per session, measured via periodic heartbeats.</span></span>
+        </p>
         <p class="text-2xl font-bold text-gray-900">{% match stats.avg_session_duration %}{% when Some with (v) %}{{ v }}s{% when None %}?{% endmatch %}</p>
     </div>
     <div class="stat-card">
-        <p class="text-xs text-gray-500 uppercase">Hits/Session</p>
+        <p class="text-xs text-gray-500 uppercase">Hits/Session
+            <span class="tooltip"><span class="info-icon">i</span><span class="tooltip-text">Average number of pages viewed per session. Higher values indicate more engaged visitors.</span></span>
+        </p>
         <p class="text-2xl font-bold text-gray-900">{% match stats.avg_hits_per_session %}{% when Some with (v) %}{{ v }}{% when None %}?{% endmatch %}</p>
     </div>
 </div>

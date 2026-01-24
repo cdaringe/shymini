@@ -9,27 +9,120 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
+        :root {
+            --color-bg: #f5f5f5;
+            --color-bg-content: #fff;
+            --color-text-primary: #333;
+            --color-text-secondary: #666;
+            --color-text-muted: #888;
+            --color-accent: #5cc265;
+            --color-accent-hover: #4aa854;
+            --color-dark-green: #2c4931;
+            --color-dark-green-hover: #3d5f42;
+            --color-border: #e0e0e0;
+        }
+        body {
+            background-color: var(--color-bg) !important;
+            color: var(--color-text-primary);
+        }
         .limited-height {
             max-height: 400px;
             overflow-y: auto;
         }
         .stat-card {
-            background: white;
+            background: var(--color-bg-content);
             border-radius: 0.5rem;
             padding: 1rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid var(--color-border);
         }
         .bar-bg {
             position: absolute;
             left: 0;
             top: 0;
             bottom: 0;
-            background: rgba(99, 102, 241, 0.1);
+            background: rgba(92, 194, 101, 0.15);
             z-index: 0;
         }
-        .comparison-up { color: #10b981; }
-        .comparison-down { color: #ef4444; }
-        .comparison-neutral { color: #6b7280; }
+        .comparison-up { color: #5cc265; }
+        .comparison-down { color: #cb4b16; }
+        .comparison-neutral { color: var(--color-text-secondary); }
+        /* Nav styling - light header with dark green text */
+        nav {
+            background-color: #fff !important;
+            border-bottom: 2px solid var(--color-accent) !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+        }
+        nav .text-gray-600 {
+            color: var(--color-dark-green) !important;
+        }
+        nav .text-gray-600:hover {
+            color: var(--color-accent) !important;
+        }
+        /* Nav button override */
+        nav .bg-indigo-600 {
+            background-color: var(--color-dark-green) !important;
+            color: #fff !important;
+        }
+        nav .bg-indigo-600:hover {
+            background-color: var(--color-dark-green-hover) !important;
+        }
+        /* Override Tailwind indigo with green accent */
+        .text-indigo-600 { color: var(--color-accent) !important; }
+        .text-indigo-600:hover { color: var(--color-accent-hover) !important; }
+        /* Nav logo - dark green (must come after general indigo override) */
+        nav .text-indigo-600 {
+            color: var(--color-dark-green) !important;
+        }
+        .bg-indigo-600 { background-color: var(--color-dark-green) !important; }
+        .bg-indigo-600:hover, .hover\:bg-indigo-700:hover { background-color: var(--color-dark-green-hover) !important; }
+        .focus\:ring-indigo-500:focus { --tw-ring-color: var(--color-accent) !important; }
+        .focus\:border-indigo-500:focus { border-color: var(--color-accent) !important; }
+        /* Checkbox accent */
+        input[type="checkbox"]:checked {
+            background-color: var(--color-dark-green) !important;
+            border-color: var(--color-dark-green) !important;
+        }
+        /* Card and shadow styling */
+        .bg-white {
+            border: 1px solid var(--color-border);
+        }
+        .shadow, .shadow-sm {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+        }
+        .shadow-lg {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+        }
+        /* Table borders */
+        .border-b, .border-t, .border {
+            border-color: var(--color-border) !important;
+        }
+        /* Table header accent */
+        thead {
+            color: var(--color-text-secondary);
+        }
+        /* Footer */
+        footer {
+            color: var(--color-text-muted);
+        }
+        footer a {
+            color: var(--color-accent) !important;
+        }
+        /* Headers with dark green accent */
+        h1 {
+            color: var(--color-dark-green) !important;
+        }
+        .bg-white .border-b h3,
+        .bg-white .p-4.border-b h3 {
+            color: var(--color-dark-green);
+        }
+        /* Status badges */
+        .bg-green-100 {
+            background-color: rgba(92, 194, 101, 0.15) !important;
+        }
+        .text-green-800 {
+            color: var(--color-dark-green) !important;
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>

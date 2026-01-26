@@ -1,7 +1,7 @@
 # ==============================================================================
 # Stage 1: Chef base - install cargo-chef
 # ==============================================================================
-FROM rust:1.85-slim-bookworm AS chef
+FROM rust:1.93-slim-bookworm AS chef
 RUN cargo install cargo-chef --locked
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config libssl-dev \

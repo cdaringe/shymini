@@ -24,22 +24,22 @@ name = "analytics"
 harness = false
 
 [dependencies]
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "0.8", features = ["macros"] }
 tokio = { version = "1", features = ["full"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "chrono", "uuid"] }
 askama = { version = "0.12", features = ["with-axum"] }
-askama_axum = "0.4"
+askama_axum = "0.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
-chrono-tz = "0.8"
+chrono-tz = "0.10"
 uuid = { version = "1", features = ["v4", "serde"] }
-maxminddb = "0.24"
+maxminddb = "0.27"
 woothee = "0.13"
 sha2 = "0.10"
-ipnetwork = "0.20"
+ipnetwork = "0.21"
 moka = { version = "0.12", features = ["future"] }
-config = "0.14"
+config = "0.15"
 dotenvy = "0.15"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -49,11 +49,11 @@ tower-http = { version = "0.6", features = ["cors", "fs", "trace"] }
 tower = "0.5"
 hex = "0.4"
 url = "2"
-rand = "0.8"
-rand_distr = "0.4"
+rand = "0.9"
+rand_distr = "0.5"
 
 [dev-dependencies]
 tokio-test = "0.4"
 tempfile = "3"
-criterion = { version = "0.5", features = ["async_tokio"] }
+criterion = { version = "0.8", features = ["async_tokio"] }
 http-body-util = "0.1"
